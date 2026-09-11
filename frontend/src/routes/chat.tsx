@@ -48,41 +48,50 @@ function TailorChat() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const res = await api.get('/bookings/tailor');
+        const res = await api.get('/chat/tailor');
         const data = res.data || [];
         
         const newThreads: Thread[] = [];
         const newConv: Record<string, Msg[]> = {};
+        const newAiModes: Record<string, boolean> = {};
         
         data.forEach((o: any) => {
           const tId = o._id;
+          const customerName = o.customer?.name || "Customer";
+          const lastMsg = o.messages && o.messages.length > 0 ? o.messages[o.messages.length - 1] : null;
+          
           newThreads.push({
             id: tId,
-            name: o.customer?.name || o.customer || "Customer",
-            initial: (o.customer?.name || o.customer || "C").substring(0, 1).toUpperCase(),
+            name: customerName,
+            customerName: customerName,
+            initial: customerName.substring(0, 1).toUpperCase(),
             tint: "bg-navy text-cream",
-            last: o.chat && o.chat.length > 0 ? o.chat[o.chat.length - 1].text : "Order started",
+            last: lastMsg ? lastMsg.text : "Order started",
             unread: 0,
             online: false,
-            time: o.chat && o.chat.length > 0 ? o.chat[o.chat.length - 1].time : ""
+            time: lastMsg ? lastMsg.time : ""
           });
           
-          if (o.chat && o.chat.length > 0) {
-            newConv[tId] = o.chat.map((msg: any) => ({
+          if (o.messages && o.messages.length > 0) {
+            newConv[tId] = o.messages.map((msg: any) => ({
               id: msg._id || Math.random().toString(),
-              from: msg.from === 'tailor' ? 'them' : 'me', // "them" in UI corresponds to tailor
+              from: msg.from === 'tailor' ? 'them' : 'me', // "them" is tailor
               text: msg.text,
               image: msg.image,
               time: msg.time,
-              read: true
+              read: true,
+              isAi: msg.isAi,
+              system: msg.system
             }));
           } else {
             newConv[tId] = [];
           }
+          newAiModes[tId] = o.aiEnabled !== false;
         });
         
         setThreads(newThreads);
         setConversation(newConv);
+        setAiModes(prev => ({ ...prev, ...newAiModes }));
       } catch (err) {
         console.error("Failed to fetch chats", err);
       } finally {
@@ -90,6 +99,9 @@ function TailorChat() {
       }
     };
     fetchChats();
+    
+    const intervalId = setInterval(fetchChats, 5000);
+    return () => clearInterval(intervalId);
   }, []);
 
   const [active, setActive] = useState<string>(threads.length > 0 ? threads[0].id : "");
@@ -106,19 +118,28 @@ function TailorChat() {
     if (!draft.trim() || !active) return;
     const newMsg: Msg = {
       id: Date.now().toString(),
-      from: "them", // Tailor is "them" in this data model
+      from: "them",
       text: draft,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false
     };
+    
     setConversation(prev => ({
       ...prev,
       [active]: [...(prev[active] || []), newMsg]
     }));
+    const userText = draft;
     setDraft("");
     
-    // In a real implementation, send message to backend endpoint
-    // await api.put(`/bookings/${active}/chat`, { from: 'tailor', text: draft, time: newMsg.time });
+    try {
+      await api.post(`/chat/${active}/message`, {
+        from: 'tailor',
+        text: userText,
+        time: newMsg.time
+      });
+    } catch (err) {
+      console.error("Failed to send", err);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,17 +229,31 @@ function TailorChat() {
                   </div>
                   <Button 
                     size="sm" 
-                    onClick={() => {
-                      setAiModes(prev => ({ ...prev, [active]: prev[active] === false ? true : false }));
-                      // Also send a system message to indicate handover
+                    onClick={async () => {
+                      const newStatus = aiModes[active] === false ? true : false;
+                      setAiModes(prev => ({ ...prev, [active]: newStatus }));
+                      
                       const newMsg: Msg = {
                         id: Date.now().toString(),
                         from: "them",
                         system: true,
-                        text: aiModes[active] === false ? "AI Assistant has been reactivated by the tailor." : "AI Assistant disabled. Human tailor will reply.",
+                        text: newStatus ? "AI Assistant has been reactivated by the tailor." : "AI Assistant disabled. Human tailor will reply.",
                         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       };
+                      
                       setConversation(prev => ({ ...prev, [active]: [...(prev[active] || []), newMsg] }));
+                      
+                      try {
+                        await api.put(`/chat/${active}/ai`, { aiEnabled: newStatus });
+                        await api.post(`/chat/${active}/message`, {
+                          from: 'tailor',
+                          text: newMsg.text,
+                          system: true,
+                          time: newMsg.time
+                        });
+                      } catch(e) {
+                        console.error(e);
+                      }
                     }}
                     className={`rounded-full h-8 text-[10px] gap-1 ${aiModes[active] !== false ? 'border-gold text-gold bg-gold/10 hover:bg-gold/20 shadow-none' : 'bg-gradient-gold text-navy-deep shadow-glow hover:opacity-90'}`}
                     variant={aiModes[active] !== false ? "outline" : "default"}

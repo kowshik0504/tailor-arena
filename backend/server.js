@@ -9,6 +9,7 @@ const tailorRoutes = require('./routes/tailorRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const User = require('./models/User');
 
 const seedAdmin = async () => {
@@ -52,6 +53,7 @@ app.use('/api/tailors', tailorRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'TAILOR ARENA API is running' });
