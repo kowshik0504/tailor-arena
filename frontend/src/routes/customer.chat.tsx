@@ -67,42 +67,53 @@ function CustomerChat() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const res = await api.get('/bookings/customer');
+        const res = await api.get('/chat/customer');
         const data = res.data || [];
         
         const newThreads: Thread[] = [];
         const newConv: Record<string, Msg[]> = {};
+        const newAiModes: Record<string, boolean> = {};
         
         data.forEach((o: any) => {
           const tId = o._id;
+          const tailorName = o.tailor?.user?.name || o.tailor?.shopName || "Tailor";
+          const lastMsg = o.messages && o.messages.length > 0 ? o.messages[o.messages.length - 1] : null;
+          
           newThreads.push({
             id: tId,
-            name: o.tailor?.user?.name || "Tailor",
-            shop: o.tailor?.businessName || "Tailor Shop",
-            initial: (o.tailor?.businessName || o.tailor?.user?.name || "T").substring(0, 1).toUpperCase(),
+            name: tailorName,
+            tailorName: tailorName,
+            shop: o.tailor?.shopName || "Tailor Shop",
+            initial: tailorName.substring(0, 1).toUpperCase(),
             tint: "bg-gradient-gold text-navy-deep",
-            last: o.chat && o.chat.length > 0 ? o.chat[o.chat.length - 1].text : "Order started",
+            last: lastMsg ? lastMsg.text : "Tap to message",
             unread: 0,
             online: false,
-            time: o.chat && o.chat.length > 0 ? o.chat[o.chat.length - 1].time : ""
+            time: lastMsg ? lastMsg.time : ""
           });
           
-          if (o.chat && o.chat.length > 0) {
-            newConv[tId] = o.chat.map((msg: any) => ({
+          if (o.messages && o.messages.length > 0) {
+            newConv[tId] = o.messages.map((msg: any) => ({
               id: msg._id || Math.random().toString(),
               from: msg.from === 'customer' ? 'me' : 'them',
               text: msg.text,
               image: msg.image,
               time: msg.time,
-              read: true
+              read: true,
+              isAi: msg.isAi,
+              system: msg.system,
+              requiresAction: msg.requiresAction
             }));
           } else {
             newConv[tId] = [];
           }
+          
+          newAiModes[tId] = o.aiEnabled !== false;
         });
         
         setThreads(newThreads);
         setConversation(newConv);
+        setAiModes(prev => ({ ...prev, ...newAiModes }));
       } catch (err) {
         console.error("Failed to fetch chats", err);
       } finally {
@@ -110,6 +121,9 @@ function CustomerChat() {
       }
     };
     fetchChats();
+    
+    const intervalId = setInterval(fetchChats, 5000);
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -121,42 +135,57 @@ function CustomerChat() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tailorId = params.get("tailorId");
-    const tailorName = params.get("name");
 
-    if (tailorId && tailorName) {
-      setActive(tailorId);
-      
-      const initials = tailorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || "T";
-      const isOnline = Math.random() > 0.5;
-      
-      const newThread: Thread = {
-        id: tailorId,
-        name: tailorName, // Legacy
-        tailorName: tailorName,
-        customerName: "Current Customer", // This represents the logged in customer
-        shop: "Premium Atelier",
-        initial: initials,
-        tint: "bg-gradient-gold",
-        last: "Tap to message",
-        unread: 0,
-        online: isOnline,
-        time: "Just now"
+    if (tailorId) {
+      const initChat = async () => {
+        try {
+          const res = await api.post('/chat/init', { tailorId });
+          const o = res.data;
+          const tId = o._id;
+          
+          setActive(tId);
+          
+          const tailorName = o.tailor?.user?.name || o.tailor?.shopName || "Tailor";
+          const lastMsg = o.messages && o.messages.length > 0 ? o.messages[o.messages.length - 1] : null;
+          
+          setThreads(prev => {
+            if (prev.find(t => t.id === tId)) return prev;
+            return [{
+              id: tId,
+              name: tailorName,
+              tailorName: tailorName,
+              shop: o.tailor?.shopName || "Tailor Shop",
+              initial: tailorName.substring(0, 1).toUpperCase(),
+              tint: "bg-gradient-gold text-navy-deep",
+              last: lastMsg ? lastMsg.text : "Tap to message",
+              unread: 0,
+              online: false,
+              time: lastMsg ? lastMsg.time : ""
+            }, ...prev];
+          });
+          
+          setConversation(prev => {
+            if (prev[tId]) return prev;
+            const msgs = o.messages ? o.messages.map((msg: any) => ({
+              id: msg._id || Math.random().toString(),
+              from: msg.from === 'customer' ? 'me' : 'them',
+              text: msg.text,
+              image: msg.image,
+              time: msg.time,
+              read: true,
+              isAi: msg.isAi,
+              system: msg.system,
+              requiresAction: msg.requiresAction
+            })) : [];
+            return { ...prev, [tId]: msgs };
+          });
+          
+          setAiModes(prev => ({ ...prev, [tId]: o.aiEnabled !== false }));
+        } catch (err) {
+          console.error("Failed to init chat", err);
+        }
       };
-
-      setThreads(prev => {
-        if (prev.find(t => t.id === tailorId)) return prev;
-        return [newThread, ...prev];
-      });
-      
-      setConversation(prev => {
-        if (prev[tailorId]) return prev;
-        return { ...prev, [tailorId]: [] };
-      });
-
-      setAiModes(prev => {
-        if (prev[tailorId] !== undefined) return prev;
-        return { ...prev, [tailorId]: true }; 
-      });
+      initChat();
     }
   }, []);
 
@@ -168,7 +197,7 @@ function CustomerChat() {
   const analyzeWithAI = async (text: string, tailorName: string, chatHistory: Msg[]): Promise<string> => {
     try {
      const apiKey = import.meta.env.VITE_GCP_API_KEY;
-      const systemInstruction = `You are a polite, highly capable AI assistant for a tailor shop named "${tailorName}".
+const systemInstruction = `You are a polite, highly capable AI assistant for a tailor shop named "${tailorName}".
 Your job is to answer questions strictly related to tailoring, fabrics, measurements, pricing, and bookings.
 Be extremely polite and helpful. Greet the customer warmly. Read the entire conversation context to understand what they need.
 The AI must never create a booking automatically. The AI may only:
@@ -182,18 +211,30 @@ The AI must never create a booking automatically. The AI may only:
 The booking must only be created after the customer explicitly clicks "Book Appointment" and submits the booking form.
 If the customer mentions booking at any point, politely guide them to the booking page or if they insist, reply with exactly the word "BOOKING_LINK" and nothing else.
 If the customer asks about irrelevant topics, politely decline and steer them back to tailoring.
-If the customer asks to speak with a human tailor, FIRST try to answer their underlying question or solve their problem. Do NOT escalate immediately.
-If they ask a SECOND time, or if they are extremely frustrated and explicitly demand a human again after you've tried to help, reply with exactly the word "ESCALATE" and nothing else.`;
+IMPORTANT: Whenever you answer a customer's specific question, provide details, or if they explicitly ask for a human tailor, you MUST end your response by asking: "Did I resolve your issue, or would you still like me to transfer you to a human tailor?" AND append the secret tag "[ESCALATE_CHECK]" at the very end of your message.`;
 
-      // Build Gemini history
-      const formattedHistory = chatHistory.filter(m => m.text && !m.system).map(m => ({
-        role: m.from === "me" ? "user" : "model",
-        parts: [{ text: m.text }]
-      }));
+      // Build Gemini history by coalescing adjacent roles
+      const allMsgs = [...chatHistory, { from: "me", text, system: false }];
+      const filtered = allMsgs.filter(m => m.text && !m.system);
+      
+      let coalescedHistory: any[] = [];
+      for (const m of filtered) {
+        const role = m.from === "me" ? "user" : "model";
+        if (coalescedHistory.length > 0 && coalescedHistory[coalescedHistory.length - 1].role === role) {
+          coalescedHistory[coalescedHistory.length - 1].parts[0].text += "\n" + m.text;
+        } else {
+          coalescedHistory.push({ role, parts: [{ text: m.text }] });
+        }
+      }
+
+      // Gemini requires the first message to be from a user
+      if (coalescedHistory.length > 0 && coalescedHistory[0].role === 'model') {
+        coalescedHistory.shift();
+      }
 
       const payload = {
         system_instruction: { parts: { text: systemInstruction } },
-        contents: [...formattedHistory, { role: "user", parts: [{ text }] }],
+        contents: coalescedHistory,
       };
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
@@ -203,12 +244,17 @@ If they ask a SECOND time, or if they are extremely frustrated and explicitly de
       });
 
       if (!response.ok) {
-        console.error("AI API Error:", response.statusText);
+        if (response.status === 429) {
+          return "I'm sorry, but I am receiving too many requests right now. Please wait a few seconds and try again.";
+        }
+        const errText = await response.text();
+        console.error("AI API Error:", response.status, errText);
         return fallbackAnalyze(text);
       }
 
       const data = await response.json();
-      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || fallbackAnalyze(text);
+      const textPart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.text);
+      const aiText = textPart?.text || fallbackAnalyze(text);
       return aiText.trim();
     } catch (err) {
       console.error("AI Fetch Error", err);
@@ -226,13 +272,25 @@ If they ask a SECOND time, or if they are extremely frustrated and explicitly de
     if (offTopic.some(ot => lower.includes(ot))) {
       return "I'm sorry, but I am a tailoring assistant. I can only assist you with questions related to clothing design.";
     }
-    if (lower.includes("human") || lower.includes("tailor") || lower.includes("person") || lower.includes("escalate")) {
+    if (/\b(hello|hi|hey)\b/i.test(lower)) {
+      return "Hello! Welcome to our tailoring studio. How can I help you today?";
+    }
+    if (/\b(price|cost|charge|much)\b/i.test(lower)) {
+      return "Our pricing depends on the fabric and dress type. A custom shirt usually starts at ₹1,500. What are you looking to stitch?";
+    }
+    if (/\b(time|days|how long)\b/i.test(lower)) {
+      return "Normally, custom orders take around 5 to 7 business days. Do you have a specific deadline?";
+    }
+    if (/\b(fabric|material|cotton|silk)\b/i.test(lower)) {
+      return "We have a wide range of premium fabrics including Egyptian cotton, linen, and silk. Would you like to check them out?";
+    }
+    if (lower.includes("human") || lower.includes("tailor") || lower.includes("person") || lower.includes("escalate") || lower.includes("chat with tailor")) {
       return "ESCALATE";
     }
-    return "I am currently running in fallback mode as my API key was invalid. Let me transfer you directly to the tailor.";
+    return "I am currently experiencing high traffic and running in offline mode. For detailed custom orders, you can leave your query here or type 'talk to tailor' to speak with a human.";
   };
 
-  const handleEscalate = () => {
+  const handleEscalate = async () => {
     setAiModes(prev => ({ ...prev, [active]: false }));
     const systemMsg: Msg = {
       id: Date.now().toString(),
@@ -241,35 +299,65 @@ If they ask a SECOND time, or if they are extremely frustrated and explicitly de
       text: `Chat escalated to human tailor. The tailor has been notified and will respond shortly.`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
+    
     setConversation(prev => ({
       ...prev,
       [active]: [...(prev[active] || []), systemMsg]
     }));
+    
+    try {
+      await api.put(`/chat/${active}/ai`, { aiEnabled: false });
+      await api.post(`/chat/${active}/message`, {
+        from: 'tailor',
+        text: systemMsg.text,
+        system: true,
+        time: systemMsg.time
+      });
+    } catch (err) {
+      console.error("Failed to escalate", err);
+    }
   };
 
   const handleSend = async () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() || isTyping) return;
+    const userText = draft;
+    setDraft("");
+    
     const newMsg: Msg = {
       id: Date.now().toString(),
       from: "me",
-      text: draft,
+      text: userText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false
     };
+    
     setConversation(prev => ({
       ...prev,
       [active]: [...(prev[active] || []), newMsg]
     }));
-    const userText = draft;
-    setDraft("");
+    
+    try {
+      await api.post(`/chat/${active}/message`, {
+        from: 'customer',
+        text: userText,
+        time: newMsg.time
+      });
+    } catch (err) {
+      console.error("Failed to send msg", err);
+    }
     
     if (isAiActive) {
       setIsTyping(true);
       const aiResponse = await analyzeWithAI(userText, thread.name, msgs);
       setIsTyping(false);
       
-      if (aiResponse === "BOOKING_LINK") {
-        const linkMsg: Msg = {
+      let replyMsg: Msg | null = null;
+      
+      let aiResponseText = aiResponse;
+      let requiresAction: string | undefined;
+
+      if (aiResponseText.includes("BOOKING_LINK")) {
+        replyMsg = {
           id: Date.now().toString(),
           from: "them",
           text: "I can help you set that up. Please click the button below to fill out your booking details and confirm your appointment.",
@@ -277,53 +365,70 @@ If they ask a SECOND time, or if they are extremely frustrated and explicitly de
           requiresAction: "booking_link",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-        setConversation(prev => ({ ...prev, [active]: [...(prev[active] || []), linkMsg] }));
-      } else if (aiResponse === "ESCALATE" || aiResponse.includes("transfer you directly")) {
-        const confirmMsg: Msg = {
-          id: Date.now().toString(),
-          from: "them",
-          text: "It looks like you want to speak with a human tailor. Did I resolve your issue, or would you still like me to transfer you?",
-          isAi: true,
-          requiresAction: "escalate_confirm",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setConversation(prev => ({ ...prev, [active]: [...(prev[active] || []), confirmMsg] }));
       } else {
-        const reply: Msg = {
+        if (aiResponseText.includes("[ESCALATE_CHECK]") || aiResponseText.includes("ESCALATE")) {
+          aiResponseText = aiResponseText.replace("[ESCALATE_CHECK]", "").replace("ESCALATE", "").trim();
+          requiresAction = "escalate_confirm";
+        }
+        
+        replyMsg = {
           id: Date.now().toString(),
           from: "them",
-          text: aiResponse,
+          text: aiResponseText,
           isAi: true,
+          requiresAction,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-        setConversation(prev => ({ ...prev, [active]: [...(prev[active] || []), reply] }));
       }
-      // When AI is off, we do nothing automatically. The real human tailor will reply via chat.tsx.
+      
+      if (replyMsg) {
+        setConversation(prev => ({ ...prev, [active]: [...(prev[active] || []), replyMsg!] }));
+        try {
+          await api.post(`/chat/${active}/message`, {
+            from: 'tailor',
+            text: replyMsg.text,
+            time: replyMsg.time,
+            isAi: replyMsg.isAi,
+            requiresAction: replyMsg.requiresAction
+          });
+        } catch (err) {
+          console.error("Failed to save AI msg", err);
+        }
+      }
     }
   };
 
-  const handleActionClick = (msgId: string, action: "continue_ai" | "escalate" | "book_now") => {
+  const handleActionClick = async (msgId: string, action: "continue_ai" | "escalate" | "book_now") => {
     if (action === "book_now") {
       window.location.href = `/customer/book/${active}`;
       return;
     }
 
+    const resolvedText = action === "continue_ai" 
+              ? "I'm glad I could help! Let me know if you need anything else." 
+              : "Transferring you to the tailor...";
+
     setConversation(prev => {
       const msgs = prev[active] || [];
       const updated = msgs.map(m => {
         if (m.id === msgId) {
-          return {
-            ...m,
-            requiresAction: undefined,
-            text: action === "continue_ai" 
-              ? "I'm glad I could help! Let me know if you need anything else." 
-              : "Transferring you to the tailor..."
-          };
+          return { ...m, requiresAction: undefined, text: resolvedText };
         }
         return m;
       });
       return { ...prev, [active]: updated };
     });
+
+    try {
+      await api.post(`/chat/${active}/message`, {
+        from: 'tailor',
+        text: resolvedText,
+        isAi: true,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } catch (e) {
+      console.error(e);
+    }
 
     if (action === "escalate") {
       setTimeout(handleEscalate, 500);

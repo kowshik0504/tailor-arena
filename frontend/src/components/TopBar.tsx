@@ -21,8 +21,10 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
   const getStorageKey = () => role === "admin" ? "admin_notifications" : role === "tailor" ? "tailor_notifications" : "customer_notifications";
 
   const [notifications, setNotifications] = useState<any[]>(() => {
-    const cached = localStorage.getItem(getStorageKey());
-    if (cached) return JSON.parse(cached);
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(getStorageKey());
+      if (cached) return JSON.parse(cached);
+    }
     
     // Default system alerts for admin if none exist
     if (role === "admin") {
