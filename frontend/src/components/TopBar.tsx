@@ -9,6 +9,7 @@ import {
 import { useRouterState, useNavigate, Link } from "@tanstack/react-router";
 import { roleFromPath, roleMeta } from "@/lib/role";
 import { useAuth } from "@/context/AuthContext";
+import api from "@/lib/api";
 import { Logo } from "./Logo";
 
 export function TopBar({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -47,6 +48,53 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
   }, [role]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (role === "tailor") {
+      api.get('/bookings/tailor').then(res => {
+        const cashReqs = res.data
+          .filter((o: any) => o.cashRequestStatus === 'pending')
+          .map((o: any) => ({
+            title: "Cash Payment Handover",
+            message: `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || 500)} in cash.`,
+            time: "New",
+            read: false,
+            orderId: o._id,
+            type: "payment"
+          }));
+        
+        if (cashReqs.length > 0) {
+          setNotifications(prev => {
+            const withoutCash = prev.filter(n => n.type !== 'payment');
+            return [...cashReqs, ...withoutCash];
+          });
+        }
+      }).catch(console.error);
+    } else if (role === "customer") {
+      api.get('/bookings/customer').then(res => {
+        const updates = res.data
+          .filter((o: any) => o.cashRequestStatus === 'approved' || o.cashRequestStatus === 'rejected')
+          .map((o: any) => ({
+            title: o.cashRequestStatus === 'approved' ? "Payment Received" : "Payment Declined",
+            message: o.cashRequestStatus === 'approved' 
+              ? `${o.tailor?.user?.name || 'Your tailor'} confirmed receiving your cash payment of ₹${o.amount - (o.baseAmountPaid || 500)}.`
+              : `${o.tailor?.user?.name || 'Your tailor'} declined the cash handover request.`,
+            time: "New",
+            read: false,
+            orderId: o._id,
+            type: "payment_update"
+          }));
+        
+        if (updates.length > 0) {
+          setNotifications(prev => {
+            const withoutUpdates = prev.filter(n => n.type !== 'payment_update');
+            return [...updates, ...withoutUpdates];
+          });
+        }
+      }).catch(console.error);
+    }
+  }, [role, user]);
 
   const markAsRead = () => {
     const updated = notifications.map(n => ({ ...n, read: true }));
@@ -127,6 +175,8 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
                       markAsRead(); 
                       if (role === "admin") {
                         navigate({ to: n.type === "verification" ? "/admin/verifications" : "/admin/notifications" });
+                      } else if (n.type === "payment") {
+                        navigate({ to: "/notifications" });
                       } else {
                         navigate({ to: role === 'customer' ? `/customer/order/${n.orderId}` : `/order/${n.orderId}` }); 
                       }

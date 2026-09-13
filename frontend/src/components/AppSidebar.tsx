@@ -4,7 +4,7 @@ import {
   CalendarDays, Bell, BarChart3, Settings, LogOut,
   Compass, Heart, ShoppingBag, CircleUser, ShieldCheck, IndianRupee,
   FileCheck, UserCog, Crown, Zap, ClipboardList, RefreshCw, CreditCard,
-  MessageCircle, Image as ImageIcon,
+  MessageCircle, Image as ImageIcon, History,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -36,6 +36,7 @@ const tailorMenu: Section[] = [
       { title: "Measurements", url: "/measurements", icon: Ruler },
       { title: "Design Catalog", url: "/catalog", icon: Sparkles },
       { title: "Portfolio", url: "/portfolio", icon: ImageIcon },
+      { title: "History", url: "/history", icon: History },
     ],
   },
   {

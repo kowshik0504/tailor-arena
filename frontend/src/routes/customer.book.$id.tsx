@@ -108,16 +108,17 @@ function BookTailor() {
             notes: notes,
             designImg: refImage,
             priority: pMap[priority] || "Normal",
-            measurements: Object.entries(measurement).map(([k, v]) => ({ label: k, v: v as string }))
+            measurements: [{ label: "Measurement Type", v: measurement === "visit" ? "Shop Visit" : "Uploaded" }]
           };
           
           const res = await api.post('/bookings', bookingData);
           setOrderId(res.data._id);
           
           setStep(4);
-        } catch (e) {
+        } catch (e: any) {
           console.error("Booking error", e);
-          alert("Failed to book appointment. Please try again.");
+          const errMsg = e.response?.data?.message || e.message || "Unknown error";
+          alert(`Failed to book appointment: ${errMsg}`);
           setStep(3); // Go back to payment
         } finally {
           setIsProcessing(false);

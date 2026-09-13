@@ -21,7 +21,7 @@ const bookingSchema = new mongoose.Schema({
   timeSlot: { type: String, required: true },
   status: {
     type: String,
-    enum: ['pending', 'acknowledged', 'confirmed', 'completed', 'cancelled', 'hold', 'in-progress'],
+    enum: ['pending', 'acknowledged', 'confirmed', 'completed', 'cancelled', 'hold', 'in-progress', 'delayed', 'handed_over'],
     default: 'confirmed'
   },
   paymentStatus: {
@@ -30,6 +30,15 @@ const bookingSchema = new mongoose.Schema({
     default: 'pending'
   },
   amount: { type: Number, required: true },
+  baseAmountPaid: { type: Number, default: 500 },
+  cashRequestStatus: {
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none'
+  },
+  delayCount: { type: Number, default: 0 },
+  delayReason: { type: String },
+  expectedHandoverDate: { type: Date },
   razorpayOrderId: { type: String },
   phonepeTransactionId: { type: String },
   paymentMethod: {

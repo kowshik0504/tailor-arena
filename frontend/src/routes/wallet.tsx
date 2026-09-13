@@ -4,7 +4,7 @@ import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { IndianRupee, ArrowUpRight, ArrowDownLeft, Clock, AlertTriangle, CheckCircle2, Building, ShieldCheck } from "lucide-react";
+import { IndianRupee, ArrowUpRight, ArrowDownLeft, Clock, AlertTriangle, CheckCircle2, Building, ShieldCheck, HandCoins, Check, X } from "lucide-react";
 import api from "@/lib/api";
 
 export const Route = createFileRoute("/wallet")({ component: TailorWallet });
@@ -12,6 +12,7 @@ export const Route = createFileRoute("/wallet")({ component: TailorWallet });
 function TailorWallet() {
   const [balance, setBalance] = useState(0);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(true);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -19,10 +20,63 @@ function TailorWallet() {
 
   const fetchProfile = async () => {
     try {
-      const res = await api.get('/tailors/profile');
+      const [res, bookingsRes] = await Promise.all([
+        api.get('/tailors/profile'),
+        api.get('/bookings/tailor')
+      ]);
+      
       if (res.data) {
         setBalance(res.data.walletBalance || 0);
         setWithdrawals(res.data.withdrawals || []);
+      }
+      
+      if (bookingsRes.data) {
+        const activities: any[] = [];
+        
+        bookingsRes.data.forEach((b: any) => {
+          // 1. Advance Payment (Base Amount) - Online
+          activities.push({
+            type: 'online_payment',
+            id: b._id + '_base',
+            bookingId: b._id,
+            date: b.createdAt,
+            amount: b.baseAmountPaid || 500,
+            status: 'completed',
+            customer: b.customer?.name || "Customer",
+            label: "Advance Payment"
+          });
+
+          const remaining = b.amount - (b.baseAmountPaid || 500);
+
+          // 2. Cash Handover (Remaining)
+          if (['pending', 'approved', 'rejected'].includes(b.cashRequestStatus)) {
+            activities.push({
+              type: 'cash_handover',
+              id: b._id + '_cash',
+              bookingId: b._id,
+              date: b.updatedAt || b.createdAt,
+              amount: remaining,
+              status: b.cashRequestStatus,
+              customer: b.customer?.name || "Customer",
+              label: "Cash Handover"
+            });
+          } 
+          // 3. Online Payment (Remaining)
+          else if (b.paymentStatus === 'paid') {
+            activities.push({
+              type: 'online_payment',
+              id: b._id + '_final',
+              bookingId: b._id,
+              date: b.updatedAt || b.createdAt,
+              amount: remaining,
+              status: 'completed',
+              customer: b.customer?.name || "Customer",
+              label: "Final Payment"
+            });
+          }
+        });
+        
+        setPayments(activities);
       }
     } catch (err) {
       console.error(err);
@@ -58,6 +112,19 @@ function TailorWallet() {
       setWithdrawing(false);
     }
   };
+
+  const handleCashAction = async (orderId: string, action: 'confirm' | 'reject') => {
+    try {
+      await api.put(`/bookings/${orderId}/${action}-cash`);
+      fetchProfile();
+    } catch (err) {
+      console.error(`Failed to ${action} cash payment`, err);
+    }
+  };
+
+  const paymentHistory = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const recentActivities = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover')]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <PageShell title="Tailor Wallet" subtitle="Manage your earnings and withdrawals.">
@@ -139,37 +206,89 @@ function TailorWallet() {
               </Button>
             </form>
           </Card>
+
+          <Card className="p-6 border-gold/40 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display text-xl text-navy">Payment History</h3>
+            </div>
+            <div className="space-y-4">
+              {paymentHistory.length === 0 ? (
+                <div className="text-center py-10 opacity-60">
+                  <Clock className="h-8 w-8 text-mocha mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No payment history.</p>
+                </div>
+              ) : (
+                paymentHistory.map((w, i) => (
+                  <div key={i} className={`flex flex-col gap-2 p-3 rounded-xl border transition-colors ${w.type === 'cash_handover' && w.status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'border-gold/20 hover:bg-gold/5'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${w.type === 'withdrawal' ? 'bg-rose-100 text-rose-600' : w.type === 'online_payment' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                          {w.type === 'withdrawal' ? <ArrowUpRight className="h-4 w-4" /> : w.type === 'online_payment' ? <CheckCircle2 className="h-4 w-4" /> : <HandCoins className="h-4 w-4" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-navy">
+                            {w.type === 'withdrawal' ? 'Withdrawal' : w.type === 'online_payment' ? `${w.label} from ${w.customer}` : `Cash from ${w.customer}`}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-bold ${w.type === 'withdrawal' ? 'text-navy' : 'text-emerald-700'}`}>{w.type === 'withdrawal' ? '-' : '+'}₹{w.amount}</p>
+                        <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' || w.status === 'approved' ? 'text-emerald-600' : w.status === 'failed' || w.status === 'rejected' ? 'text-rose-600' : 'text-amber-600'}`}>
+                          {w.status === 'pending' && w.type === 'cash_handover' ? 'Pending Approval' : w.status}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </div>
 
-        <Card className="p-6 border-gold/40 shadow-sm">
+        <Card className="p-6 border-gold/40 shadow-sm h-fit">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-display text-xl text-navy">Recent Activity</h3>
           </div>
           
           <div className="space-y-4">
-            {withdrawals.length === 0 ? (
+            {recentActivities.length === 0 ? (
               <div className="text-center py-10 opacity-60">
                 <Clock className="h-8 w-8 text-mocha mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No withdrawals yet.</p>
+                <p className="text-sm">No recent activity.</p>
               </div>
             ) : (
-              withdrawals.map((w, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-gold/20 hover:bg-gold/5 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
-                      <ArrowUpRight className="h-4 w-4" />
+              recentActivities.map((w, i) => (
+                <div key={i} className={`flex flex-col gap-2 p-3 rounded-xl border transition-colors ${w.type === 'cash_handover' && w.status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'border-gold/20 hover:bg-gold/5'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${w.type === 'withdrawal' ? 'bg-rose-100 text-rose-600' : w.type === 'online_payment' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                        {w.type === 'withdrawal' ? <ArrowUpRight className="h-4 w-4" /> : w.type === 'online_payment' ? <CheckCircle2 className="h-4 w-4" /> : <HandCoins className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-navy">
+                          {w.type === 'withdrawal' ? 'Withdrawal' : w.type === 'online_payment' ? `${w.label} from ${w.customer}` : `Cash from ${w.customer}`}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-navy">Withdrawal</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    <div className="text-right">
+                      <p className={`text-sm font-bold ${w.type === 'withdrawal' ? 'text-navy' : 'text-emerald-700'}`}>{w.type === 'withdrawal' ? '-' : '+'}₹{w.amount}</p>
+                      <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' || w.status === 'approved' ? 'text-emerald-600' : w.status === 'failed' || w.status === 'rejected' ? 'text-rose-600' : 'text-amber-600'}`}>
+                        {w.status === 'pending' && w.type === 'cash_handover' ? 'Pending Approval' : w.status}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-navy">-₹{w.amount}</p>
-                    <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' ? 'text-emerald-600' : w.status === 'failed' ? 'text-rose-600' : 'text-amber-600'}`}>
-                      {w.status}
-                    </p>
-                  </div>
+                  {w.type === 'cash_handover' && w.status === 'pending' && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50 rounded-full" onClick={() => handleCashAction(w.bookingId, 'reject')}>
+                        <X className="h-3 w-3 mr-1" /> No
+                      </Button>
+                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 text-white hover:bg-emerald-700 rounded-full" onClick={() => handleCashAction(w.bookingId, 'confirm')}>
+                        <Check className="h-3 w-3 mr-1" /> Received in hand
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))
             )}

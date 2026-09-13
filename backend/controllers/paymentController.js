@@ -108,17 +108,17 @@ if (tailor) {
 }
 
 // Redirect to frontend success page
-return res.redirect(`http://localhost:3000/success/${bookingId}`);
+return res.redirect(`http://localhost:5173/success/${bookingId}`);
 }
 }
 
 // If failed or not found, redirect to payment page or dashboard
-res.redirect(`http://localhost:3000/customer/dashboard`);
+res.redirect(`http://localhost:5173/customer`);
 
 
   } catch (error) {
     console.error('PhonePe callback error:', error);
-    res.redirect('http://localhost:3000/payment-failure');
+    res.redirect('http://localhost:5173/payment-failure');
   }
 };
 

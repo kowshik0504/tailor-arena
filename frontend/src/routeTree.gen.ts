@@ -18,6 +18,7 @@ import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MeasurementsRouteImport } from './routes/measurements'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
@@ -40,9 +41,11 @@ import { Route as OnboardingPaymentRouteImport } from './routes/onboarding.payme
 import { Route as CustomerSettingsRouteImport } from './routes/customer.settings'
 import { Route as CustomerSavedRouteImport } from './routes/customer.saved'
 import { Route as CustomerProfileRouteImport } from './routes/customer.profile'
+import { Route as CustomerPayCashRouteImport } from './routes/customer.pay-cash'
 import { Route as CustomerOrdersRouteImport } from './routes/customer.orders'
 import { Route as CustomerNotificationsRouteImport } from './routes/customer.notifications'
 import { Route as CustomerMeasurementsRouteImport } from './routes/customer.measurements'
+import { Route as CustomerDummyPaymentRouteImport } from './routes/customer.dummy-payment'
 import { Route as CustomerDiscoverRouteImport } from './routes/customer.discover'
 import { Route as CustomerChatRouteImport } from './routes/customer.chat'
 import { Route as CustomerCatalogRouteImport } from './routes/customer.catalog'
@@ -108,6 +111,11 @@ const MeasurementsRoute = MeasurementsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -220,6 +228,11 @@ const CustomerProfileRoute = CustomerProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => CustomerRoute,
 } as any)
+const CustomerPayCashRoute = CustomerPayCashRouteImport.update({
+  id: '/pay-cash',
+  path: '/pay-cash',
+  getParentRoute: () => CustomerRoute,
+} as any)
 const CustomerOrdersRoute = CustomerOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -233,6 +246,11 @@ const CustomerNotificationsRoute = CustomerNotificationsRouteImport.update({
 const CustomerMeasurementsRoute = CustomerMeasurementsRouteImport.update({
   id: '/measurements',
   path: '/measurements',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerDummyPaymentRoute = CustomerDummyPaymentRouteImport.update({
+  id: '/dummy-payment',
+  path: '/dummy-payment',
   getParentRoute: () => CustomerRoute,
 } as any)
 const CustomerDiscoverRoute = CustomerDiscoverRouteImport.update({
@@ -354,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/measurements': typeof MeasurementsRoute
   '/notifications': typeof NotificationsRoute
@@ -381,9 +400,11 @@ export interface FileRoutesByFullPath {
   '/customer/catalog': typeof CustomerCatalogRoute
   '/customer/chat': typeof CustomerChatRoute
   '/customer/discover': typeof CustomerDiscoverRoute
+  '/customer/dummy-payment': typeof CustomerDummyPaymentRoute
   '/customer/measurements': typeof CustomerMeasurementsRoute
   '/customer/notifications': typeof CustomerNotificationsRoute
   '/customer/orders': typeof CustomerOrdersRoute
+  '/customer/pay-cash': typeof CustomerPayCashRoute
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/saved': typeof CustomerSavedRoute
   '/customer/settings': typeof CustomerSettingsRoute
@@ -409,6 +430,7 @@ export interface FileRoutesByTo {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/measurements': typeof MeasurementsRoute
   '/notifications': typeof NotificationsRoute
@@ -436,9 +458,11 @@ export interface FileRoutesByTo {
   '/customer/catalog': typeof CustomerCatalogRoute
   '/customer/chat': typeof CustomerChatRoute
   '/customer/discover': typeof CustomerDiscoverRoute
+  '/customer/dummy-payment': typeof CustomerDummyPaymentRoute
   '/customer/measurements': typeof CustomerMeasurementsRoute
   '/customer/notifications': typeof CustomerNotificationsRoute
   '/customer/orders': typeof CustomerOrdersRoute
+  '/customer/pay-cash': typeof CustomerPayCashRoute
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/saved': typeof CustomerSavedRoute
   '/customer/settings': typeof CustomerSettingsRoute
@@ -467,6 +491,7 @@ export interface FileRoutesById {
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/measurements': typeof MeasurementsRoute
   '/notifications': typeof NotificationsRoute
@@ -494,9 +519,11 @@ export interface FileRoutesById {
   '/customer/catalog': typeof CustomerCatalogRoute
   '/customer/chat': typeof CustomerChatRoute
   '/customer/discover': typeof CustomerDiscoverRoute
+  '/customer/dummy-payment': typeof CustomerDummyPaymentRoute
   '/customer/measurements': typeof CustomerMeasurementsRoute
   '/customer/notifications': typeof CustomerNotificationsRoute
   '/customer/orders': typeof CustomerOrdersRoute
+  '/customer/pay-cash': typeof CustomerPayCashRoute
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/saved': typeof CustomerSavedRoute
   '/customer/settings': typeof CustomerSettingsRoute
@@ -526,6 +553,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/forgot-password'
+    | '/history'
     | '/login'
     | '/measurements'
     | '/notifications'
@@ -553,9 +581,11 @@ export interface FileRouteTypes {
     | '/customer/catalog'
     | '/customer/chat'
     | '/customer/discover'
+    | '/customer/dummy-payment'
     | '/customer/measurements'
     | '/customer/notifications'
     | '/customer/orders'
+    | '/customer/pay-cash'
     | '/customer/profile'
     | '/customer/saved'
     | '/customer/settings'
@@ -581,6 +611,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/forgot-password'
+    | '/history'
     | '/login'
     | '/measurements'
     | '/notifications'
@@ -608,9 +639,11 @@ export interface FileRouteTypes {
     | '/customer/catalog'
     | '/customer/chat'
     | '/customer/discover'
+    | '/customer/dummy-payment'
     | '/customer/measurements'
     | '/customer/notifications'
     | '/customer/orders'
+    | '/customer/pay-cash'
     | '/customer/profile'
     | '/customer/saved'
     | '/customer/settings'
@@ -638,6 +671,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/forgot-password'
+    | '/history'
     | '/login'
     | '/measurements'
     | '/notifications'
@@ -665,9 +699,11 @@ export interface FileRouteTypes {
     | '/customer/catalog'
     | '/customer/chat'
     | '/customer/discover'
+    | '/customer/dummy-payment'
     | '/customer/measurements'
     | '/customer/notifications'
     | '/customer/orders'
+    | '/customer/pay-cash'
     | '/customer/profile'
     | '/customer/saved'
     | '/customer/settings'
@@ -696,6 +732,7 @@ export interface RootRouteChildren {
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeasurementsRoute: typeof MeasurementsRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -775,6 +812,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -931,6 +975,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomerProfileRouteImport
       parentRoute: typeof CustomerRoute
     }
+    '/customer/pay-cash': {
+      id: '/customer/pay-cash'
+      path: '/pay-cash'
+      fullPath: '/customer/pay-cash'
+      preLoaderRoute: typeof CustomerPayCashRouteImport
+      parentRoute: typeof CustomerRoute
+    }
     '/customer/orders': {
       id: '/customer/orders'
       path: '/orders'
@@ -950,6 +1001,13 @@ declare module '@tanstack/react-router' {
       path: '/measurements'
       fullPath: '/customer/measurements'
       preLoaderRoute: typeof CustomerMeasurementsRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/dummy-payment': {
+      id: '/customer/dummy-payment'
+      path: '/dummy-payment'
+      fullPath: '/customer/dummy-payment'
+      preLoaderRoute: typeof CustomerDummyPaymentRouteImport
       parentRoute: typeof CustomerRoute
     }
     '/customer/discover': {
@@ -1145,9 +1203,11 @@ interface CustomerRouteChildren {
   CustomerCatalogRoute: typeof CustomerCatalogRoute
   CustomerChatRoute: typeof CustomerChatRoute
   CustomerDiscoverRoute: typeof CustomerDiscoverRoute
+  CustomerDummyPaymentRoute: typeof CustomerDummyPaymentRoute
   CustomerMeasurementsRoute: typeof CustomerMeasurementsRoute
   CustomerNotificationsRoute: typeof CustomerNotificationsRoute
   CustomerOrdersRoute: typeof CustomerOrdersRoute
+  CustomerPayCashRoute: typeof CustomerPayCashRoute
   CustomerProfileRoute: typeof CustomerProfileRoute
   CustomerSavedRoute: typeof CustomerSavedRoute
   CustomerSettingsRoute: typeof CustomerSettingsRoute
@@ -1162,9 +1222,11 @@ const CustomerRouteChildren: CustomerRouteChildren = {
   CustomerCatalogRoute: CustomerCatalogRoute,
   CustomerChatRoute: CustomerChatRoute,
   CustomerDiscoverRoute: CustomerDiscoverRoute,
+  CustomerDummyPaymentRoute: CustomerDummyPaymentRoute,
   CustomerMeasurementsRoute: CustomerMeasurementsRoute,
   CustomerNotificationsRoute: CustomerNotificationsRoute,
   CustomerOrdersRoute: CustomerOrdersRoute,
+  CustomerPayCashRoute: CustomerPayCashRoute,
   CustomerProfileRoute: CustomerProfileRoute,
   CustomerSavedRoute: CustomerSavedRoute,
   CustomerSettingsRoute: CustomerSettingsRoute,
@@ -1191,6 +1253,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeasurementsRoute: MeasurementsRoute,
   NotificationsRoute: NotificationsRoute,

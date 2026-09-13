@@ -69,7 +69,22 @@ function Orders() {
     try {
       setLoading(true);
       const { data } = await api.get('/bookings/tailor');
-      const mapped: Order[] = data.map((b: any) => {
+      
+      const now = Date.now();
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+      const filteredData = data.filter((b: any) => {
+        // If it's completed or cancelled, check if it's older than 24 hours
+        if (b.status === "completed" || b.status === "cancelled") {
+          const updatedTime = new Date(b.updatedAt || b.createdAt).getTime();
+          if (now - updatedTime > ONE_DAY_MS) {
+            return false; // Hide from Kanban
+          }
+        }
+        return true;
+      });
+
+      const mapped: Order[] = filteredData.map((b: any) => {
         let status: Status = "Pending";
         if (b.status === "confirmed" || b.status === "acknowledged") status = "Accepted";
         else if (b.status === "cancelled") status = "Rejected";
@@ -179,10 +194,18 @@ function Orders() {
           return (
             <div
               key={col.id}
-              className="space-y-3"
+              className="flex flex-col gap-3 min-h-[70vh] rounded-2xl transition-colors"
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
-                if (dragId) moveTo(dragId, col.id);
+                if (dragId) {
+                  if (col.id === 'Completed') {
+                    if (window.confirm("Are you sure you want to mark this order as completed?")) {
+                      moveTo(dragId, col.id);
+                    }
+                  } else {
+                    moveTo(dragId, col.id);
+                  }
+                }
                 setDragId(null);
               }}
             >
@@ -192,15 +215,23 @@ function Orders() {
                   <span className="text-xs opacity-80 bg-background/40 rounded-full px-2 py-0.5">{items.length}</span>
                 </div>
               </div>
-              {items.map((item) => (
-                <Card
-                  key={item.id}
-                  draggable
-                  onDragStart={() => setDragId(item.id)}
-                  onClick={() => navigate({ to: `/order/${item.id}` })}
-                  className="p-4 border-gold/60 shadow-luxe hover:shadow-glow hover:-translate-y-0.5 transition-all cursor-grab active:cursor-grabbing"
-                >
-                  <div className="flex items-start justify-between">
+              {items.map((item) => {
+                const isCompleted = item.status === 'Completed';
+                return (
+                  <Card
+                    key={item.id}
+                    draggable={!isCompleted}
+                    onDragStart={(e) => {
+                      if (isCompleted) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setDragId(item.id);
+                    }}
+                    onClick={() => navigate({ to: `/order/${item.id}` })}
+                    className={`p-4 border-gold/60 shadow-luxe transition-all ${isCompleted ? 'cursor-pointer hover:shadow-md' : 'hover:shadow-glow hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'}`}
+                  >
+                    <div className="flex items-start justify-between">
                     <Badge className={`rounded-full text-[10px] uppercase tracking-wider ${priorityTint[item.priority]}`}>
                       {item.priority}
                     </Badge>
@@ -215,7 +246,8 @@ function Orders() {
                     )}
                   </div>
                 </Card>
-              ))}
+                );
+              })}
               {items.length === 0 && (
                 <div className="rounded-xl border-2 border-dashed border-gold/50 py-8 text-center text-xs text-muted-foreground">
                   Drop here
