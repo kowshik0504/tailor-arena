@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import {
   ChevronLeft, ChevronRight, Calendar as CalIcon,
   Ruler, Scissors, PackageCheck, Sparkles, Coffee, Clock,
 } from "lucide-react";
+
+import api from "@/lib/api";
 
 export const Route = createFileRoute("/appointments")({ component: Appointments });
 
@@ -20,9 +23,6 @@ type Appt = {
   tint: string;
 };
 
-const today: Appt[] = [];
-const tomorrow: Appt[] = [];
-
 const workQueue = [
   { label: "Pending Measurements", count: 0, icon: Ruler, tint: "bg-gradient-rose" },
   { label: "Under Stitching", count: 0, icon: Scissors, tint: "bg-gradient-gold" },
@@ -30,13 +30,111 @@ const workQueue = [
   { label: "Consultations", count: 0, icon: Sparkles, tint: "bg-gradient-luxe text-primary-foreground" },
 ];
 
-const month = Array.from({ length: 35 }, (_, i) => i - 3);
-const busyDays: number[] = [];
-const trialDays: number[] = [];
-const deliveryDays: number[] = [];
-const leaveDays: number[] = [];
-
 function Appointments() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const todayDate = now.getDate();
+  
+  const [displayMonth, setDisplayMonth] = useState(currentMonth);
+  const [displayYear, setDisplayYear] = useState(currentYear);
+  
+  const [todayAppts, setTodayAppts] = useState<Appt[]>([]);
+  const [tomorrow, setTomorrow] = useState<Appt[]>([]);
+  const [busyDays, setBusyDays] = useState<number[]>([]);
+  const [trialDays] = useState<number[]>([]);
+  const [deliveryDays] = useState<number[]>([]);
+  const [leaveDays] = useState<number[]>([]);
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await api.get('/bookings/tailor');
+        const allBookings = res.data;
+        
+        const formatLocalISODate = (d: Date) => {
+          return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        };
+
+        const todayStr = formatLocalISODate(new Date());
+        const tmrDate = new Date();
+        tmrDate.setDate(tmrDate.getDate() + 1);
+        const tomStr = formatLocalISODate(tmrDate);
+
+        const mapBooking = (b: any): Appt => {
+          let icon = Ruler;
+          let tint = "bg-gradient-cream";
+          if (b.workType === 'alteration') {
+             icon = Scissors;
+             tint = "bg-gradient-gold";
+          } else if (b.dressType?.toLowerCase().includes('consultation')) {
+             icon = Sparkles;
+             tint = "bg-gradient-luxe text-primary-foreground";
+          } else {
+             icon = PackageCheck;
+             tint = "bg-gradient-rose";
+          }
+          return {
+            time: b.timeSlot,
+            customer: b.customer?.name || "Customer",
+            service: b.dressType,
+            garment: b.workType,
+            status: b.status === "confirmed" ? "Confirmed" : b.status === "pending" ? "Pending" : "Completed",
+            icon,
+            tint
+          };
+        };
+
+        setTodayAppts(allBookings.filter((b: any) => b.date && formatLocalISODate(new Date(b.date)) === todayStr).map(mapBooking));
+        setTomorrow(allBookings.filter((b: any) => b.date && formatLocalISODate(new Date(b.date)) === tomStr).map(mapBooking));
+
+        // Mark busy days based on the currently displayed month
+        const currentMonthBookings = allBookings.filter((b: any) => {
+          if (!b.date) return false;
+          const bd = new Date(b.date);
+          return bd.getMonth() === displayMonth && bd.getFullYear() === displayYear;
+        });
+        
+        const busy = currentMonthBookings.map((b: any) => new Date(b.date).getDate());
+        setBusyDays([...new Set(busy)] as number[]);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchBookings();
+  }, [displayMonth, displayYear]);
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  
+  const goToPrevMonth = () => {
+    setDisplayMonth((prev) => {
+      if (prev === 0) {
+        setDisplayYear((y) => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const goToNextMonth = () => {
+    setDisplayMonth((prev) => {
+      if (prev === 11) {
+        setDisplayYear((y) => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
+
+  const isCurrentMonth = displayMonth === currentMonth && displayYear === currentYear;
+  
+  const firstDay = new Date(displayYear, displayMonth, 1).getDay();
+  const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+  
+  const totalCells = (firstDay + daysInMonth) > 35 ? 42 : 35;
+  const calendarCells = Array.from({ length: totalCells }, (_, i) => i - firstDay + 1);
+
   return (
     <PageShell title="Schedule" subtitle="Your atelier diary — appointments, fittings, and daily work queue.">
       {/* Daily Work Queue */}
@@ -59,11 +157,11 @@ function Appointments() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <CalIcon className="h-5 w-5 text-mocha" />
-              <h3 className="font-display text-xl text-navy">May 2026</h3>
+              <h3 className="font-display text-xl text-navy">{monthNames[displayMonth]} {displayYear}</h3>
             </div>
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" className="rounded-full"><ChevronLeft className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" className="rounded-full"><ChevronRight className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="rounded-full" onClick={goToPrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="rounded-full" onClick={goToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
@@ -72,9 +170,9 @@ function Appointments() {
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1">
-            {month.map((d, i) => {
-              const isToday = d === 25;
-              const inMonth = d > 0 && d <= 31;
+            {calendarCells.map((d, i) => {
+              const isToday = isCurrentMonth && d === todayDate;
+              const inMonth = d > 0 && d <= daysInMonth;
               const busy = busyDays.includes(d);
               const trial = trialDays.includes(d);
               const delivery = deliveryDays.includes(d);
@@ -110,18 +208,18 @@ function Appointments() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display text-lg text-navy">Today's appointments</h3>
-              <p className="text-xs text-muted-foreground">Monday, 25 May · Studio A</p>
+              <p className="text-xs text-muted-foreground">{dayNames[now.getDay()]}, {todayDate} {monthNames[currentMonth]} · Studio A</p>
             </div>
-            <Badge className="rounded-full bg-gradient-gold text-navy-deep">{today.length}</Badge>
+            <Badge className="rounded-full bg-gradient-gold text-navy-deep">{todayAppts.length}</Badge>
           </div>
           <div className="mt-5 space-y-2 max-h-[420px] overflow-auto pr-2">
-            {today.length === 0 ? (
+            {todayAppts.length === 0 ? (
               <div className="h-32 rounded-2xl bg-white/50 border border-gold/20 flex flex-col items-center justify-center text-mocha/60">
                 <Coffee className="h-6 w-6 mb-2 opacity-50" />
                 <p className="text-sm">No appointments scheduled for today</p>
               </div>
             ) : (
-              today.map((a) => (
+              todayAppts.map((a) => (
                 <div key={a.time} className="flex items-stretch gap-3">
                   <div className="w-14 flex flex-col items-center justify-center text-xs">
                     <span className="font-display text-base text-navy">{a.time}</span>

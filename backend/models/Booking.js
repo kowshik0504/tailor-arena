@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   customer: {
@@ -21,20 +21,38 @@ const bookingSchema = new mongoose.Schema({
   timeSlot: { type: String, required: true },
   status: {
     type: String,
-    enum: ['pending', 'acknowledged', 'confirmed', 'completed', 'cancelled', 'hold', 'in-progress'],
+    enum: ['pending', 'acknowledged', 'confirmed', 'completed', 'cancelled', 'hold', 'in-progress', 'delayed', 'handed_over'],
     default: 'confirmed'
   },
-  paymentStatus: {
+  onlinePaymentStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected']
+    },
+    onlinePaymentStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    paymentStatus: {
     type: String,
     enum: ['pending', 'paid', 'pay_later'],
     default: 'pending'
   },
   amount: { type: Number, required: true },
+  baseAmountPaid: { type: Number, default: 500 },
+  cashRequestStatus: {
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none'
+  },
+  delayCount: { type: Number, default: 0 },
+  delayReason: { type: String },
+  expectedHandoverDate: { type: Date },
   razorpayOrderId: { type: String },
   phonepeTransactionId: { type: String },
   paymentMethod: {
     type: String,
-    enum: ['gpay', 'phonepe', 'credit_card', 'debit_card', 'cash', 'online']
+    enum: ['gpay', 'phonepe', 'credit_card', 'debit_card', 'cash', 'online', 'upi', 'netbanking']
   },
   notes: { type: String },
   designImg: { type: String },
@@ -56,3 +74,5 @@ const bookingSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);
+
+

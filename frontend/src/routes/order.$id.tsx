@@ -1,11 +1,12 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, Clock, Check, X, AlertCircle, Phone, Mail, User, Image as ImageIcon, Ruler, Scissors, Banknote } from "lucide-react";
+import { CalendarDays, Clock, Check, X, AlertCircle, Phone, Mail, User, Image as ImageIcon, Ruler, Scissors, Banknote, ArrowLeft, Loader2, PackageCheck } from "lucide-react";
+import api from "@/lib/api";
 
 export const Route = createFileRoute("/order/$id")({
   component: OrderDetails,
@@ -15,100 +16,175 @@ function OrderDetails() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [rejectionReason, setRejectionReason] = useState("");
   const [changesComment, setChangesComment] = useState("");
   const [isRejecting, setIsRejecting] = useState(false);
   const [isRequestingChanges, setIsRequestingChanges] = useState(false);
+  
+  const [isHandoverPanelOpen, setIsHandoverPanelOpen] = useState(false);
+  const [delayReason, setDelayReason] = useState("");
+  const [expectedDate, setExpectedDate] = useState("");
 
   useEffect(() => {
-    const fetchOrder = () => {
-      const saved = localStorage.getItem("orders_board");
-      if (saved) {
-        const orders = JSON.parse(saved);
-        const found = orders.find((o: any) => o.id === id);
-        if (found) setOrder(found);
+    const fetchOrder = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.get(`/bookings/${id}`);
+        setOrder(res.data);
+      } catch (err: any) {
+        console.error("Failed to fetch order:", err);
+        setError(err.response?.data?.message || "Failed to load order details.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchOrder();
-
-    const handleStorage = (e?: StorageEvent) => {
-      if (!e || e.key === "orders_board") fetchOrder();
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
   }, [id]);
 
-  if (!order) return <PageShell title="Loading..."><div className="p-8 text-center">Loading booking details...</div></PageShell>;
+  if (loading) {
+    return (
+      <PageShell title="Loading..." subtitle="Fetching booking details">
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-gold mb-4" />
+          <p className="text-mocha">Loading booking details...</p>
+        </div>
+      </PageShell>
+    );
+  }
 
-  const updateStatus = (newStatus: string, extraFields: any = {}) => {
-    const saved = localStorage.getItem("orders_board");
-    if (saved) {
-      let orders = JSON.parse(saved);
-      orders = orders.map((o: any) => o.id === id ? { ...o, status: newStatus, ...extraFields } : o);
-      localStorage.setItem("orders_board", JSON.stringify(orders));
-      window.dispatchEvent(new Event("storage"));
-      setOrder({ ...order, status: newStatus, ...extraFields });
-      
-      // Reset modes
-      setIsRejecting(false);
-      setIsRequestingChanges(false);
+  if (error || !order) {
+    return (
+      <PageShell title="Booking Not Found" subtitle="We couldn't find this booking.">
+        <Card className="max-w-lg mx-auto p-8 text-center border-border shadow-luxe">
+          <AlertCircle className="h-12 w-12 text-terracotta mx-auto mb-4" />
+          <h2 className="font-display text-xl text-navy mb-2">Booking Not Found</h2>
+          <p className="text-mocha text-sm mb-6">{error || "The booking you're looking for doesn't exist or you don't have access to it."}</p>
+          <Button
+            variant="outline"
+            className="border-navy/20 text-navy"
+            onClick={() => navigate({ to: "/dashboard" })}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+          </Button>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  const updateStatusLocally = (newStatus: string) => {
+    setOrder({ ...order, status: newStatus });
+    setIsRejecting(false);
+    setIsRequestingChanges(false);
+  };
+
+  const handleAccept = async () => {
+    try {
+      await api.put(`/bookings/${id}/accept`);
+      updateStatusLocally("confirmed");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to accept booking.");
+    }
+  };
+  
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) return;
+    try {
+      await api.put(`/bookings/${id}/reject`, { reason: rejectionReason });
+      updateStatusLocally("cancelled"); // Using cancelled for rejection
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reject booking.");
+    }
+  };
+  
+  const handleRequestChanges = async () => {
+    if (!changesComment.trim()) return;
+    try {
+      await api.put(`/bookings/${id}/hold`);
+      updateStatusLocally("hold");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to request changes.");
     }
   };
 
-  const notifyCustomer = (title: string, message: string) => {
-    const str = localStorage.getItem("customer_notifications");
-    const notes = str ? JSON.parse(str) : [];
-    notes.unshift({
-      id: Date.now().toString(),
-      orderId: id,
-      title,
-      message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: false
-    });
-    localStorage.setItem("customer_notifications", JSON.stringify(notes));
-    window.dispatchEvent(new Event("storage"));
+  const handleHandover = async () => {
+    try {
+      await api.put(`/bookings/${id}/handover`);
+      updateStatusLocally("handed_over");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to mark handover.");
+    }
   };
 
-  const handleAccept = () => {
-    updateStatus("Accepted");
-    notifyCustomer("Booking Accepted", `Your booking ${id} has been accepted by the tailor.`);
+  const handleDelay = async () => {
+    if (!delayReason.trim() || !expectedDate) return;
+    try {
+      await api.put(`/bookings/${id}/delay-handover`, { reason: delayReason, expectedDate });
+      setOrder({ ...order, status: "delayed", delayCount: (order.delayCount || 0) + 1 });
+      setIsHandoverPanelOpen(false);
+      alert("Handover delay recorded and customer notified.");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || "Failed to record delay.");
+    }
   };
+
+  const statusColors: Record<string, string> = {
+    pending: "bg-gold/20 text-navy-deep",
+    acknowledged: "bg-blue-100 text-blue-800",
+    confirmed: "bg-emerald-100 text-emerald-800",
+    completed: "bg-green-100 text-green-800",
+    cancelled: "bg-rose-100 text-rose-800",
+    hold: "bg-amber-100 text-amber-800",
+    "in-progress": "bg-indigo-100 text-indigo-800",
+    delayed: "bg-amber-100 text-amber-800",
+    "handed_over": "bg-indigo-100 text-indigo-800",
+  };
+
+  const statusLabel = (order.status || "pending").replace("-", " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+  const customerName = order.customer?.name || "Customer";
+  const formattedDate = order.date ? new Date(order.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "Pending";
   
-  const handleReject = () => {
-    if (!rejectionReason.trim()) return;
-    updateStatus("Rejected", { rejectionReason });
-    notifyCustomer("Booking Rejected", `Your booking ${id} was rejected.\nReason: ${rejectionReason}`);
-  };
-  
-  const handleRequestChanges = () => {
-    if (!changesComment.trim()) return;
-    updateStatus("Changes Requested", { tailorComments: changesComment });
-    notifyCustomer("Changes Requested", `Kowshik Tailor has requested updates to your booking.\nBooking ID: ${id}\n\nReason:\n${changesComment}`);
-  };
+  const isFullyPaid = (order.amount <= (order.baseAmountPaid || 0)) || order.paymentStatus === 'paid' || order.cashRequestStatus === 'approved';
+  const showHandoverAction = (order.status === 'completed' || order.status === 'delayed') && isFullyPaid;
 
   return (
-    <PageShell title={`Booking Details: ${order.id}`} subtitle="Manage customer appointment and requirements.">
+    <PageShell title={`Booking Details`} subtitle={`Order #${order._id?.slice(-8).toUpperCase()}`}>
       <div className="max-w-4xl mx-auto space-y-6">
         
+        {/* Back button */}
+        <Button
+          variant="ghost"
+          className="text-mocha hover:text-navy -ml-2 mb-2"
+          onClick={() => navigate({ to: "/orders" })}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Orders
+        </Button>
+
         {/* Header / Status Line */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white rounded-2xl shadow-luxe border border-gold/40">
           <div>
             <h2 className="font-display text-2xl text-navy flex items-center gap-3">
-              {order.customer} 
-              <Badge className={`rounded-full ${order.status === 'Pending' ? 'bg-gold/20 text-navy-deep' : order.status === 'Accepted' ? 'bg-emerald-100 text-emerald-800' : order.status === 'Rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
-                {order.status === 'Pending' ? 'Pending Review' : order.status}
+              {customerName} 
+              <Badge className={`rounded-full ${statusColors[order.status] || 'bg-secondary text-secondary-foreground'}`}>
+                {order.status === 'pending' ? 'Pending Review' : statusLabel}
               </Badge>
             </h2>
             <p className="text-sm text-mocha flex items-center gap-4 mt-2">
-              <span className="flex items-center gap-1"><Phone className="h-4 w-4" /> {order.phone || "+91 98765 43210"}</span>
-              <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> {order.email || "customer@example.com"}</span>
+              <span className="flex items-center gap-1"><Phone className="h-4 w-4" /> {order.customer?.phone || "Not provided"}</span>
+              <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> {order.customer?.email || "customer@example.com"}</span>
             </p>
           </div>
           
           <div className="flex gap-2">
-            {order.status === "Pending" && !isRejecting && !isRequestingChanges && (
+            {order.status === "pending" && !isRejecting && !isRequestingChanges && (
               <>
                 <Button className="bg-gradient-navy text-cream shadow-navy rounded-xl h-10 px-6 gap-2" onClick={handleAccept}>
                   <Check className="h-4 w-4" /> Accept Booking
@@ -138,11 +214,58 @@ function OrderDetails() {
 
         {isRequestingChanges && (
           <Card className="p-6 border-amber-200 bg-amber-50 shadow-sm animate-in fade-in slide-in-from-top-2">
-            <h3 className="text-amber-800 font-medium mb-2">Request Changes</h3>
-            <Input placeholder="E.g., Please upload clearer measurements..." value={changesComment} onChange={(e) => setChangesComment(e.target.value)} className="mb-3 bg-white" />
+            <h3 className="text-amber-800 font-medium mb-2">Request Changes (Hold)</h3>
+            <Input placeholder="E.g., Please clarify your measurements..." value={changesComment} onChange={(e) => setChangesComment(e.target.value)} className="mb-3 bg-white" />
             <div className="flex gap-2">
               <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleRequestChanges} disabled={!changesComment.trim()}>Send Request</Button>
               <Button size="sm" variant="ghost" onClick={() => setIsRequestingChanges(false)}>Cancel</Button>
+            </div>
+          </Card>
+        )}
+
+        {showHandoverAction && !isHandoverPanelOpen && (
+          <Card className="p-6 border-indigo-200 bg-indigo-50 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-indigo-800 font-medium mb-1 flex items-center gap-2">
+                  <PackageCheck className="h-5 w-5" /> Handover Status
+                </h3>
+                <p className="text-sm text-indigo-600/80">Has the cloth been handed over to the customer?</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleHandover}>
+                  Yes, Handed Over
+                </Button>
+                <Button size="sm" variant="outline" className="border-indigo-300 text-indigo-700 hover:bg-indigo-100" onClick={() => setIsHandoverPanelOpen(true)}>
+                  No
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {isHandoverPanelOpen && (
+          <Card className="p-6 border-amber-200 bg-amber-50 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <h3 className="text-amber-800 font-medium mb-2">Delay Handover</h3>
+            <p className="text-xs text-amber-700 mb-4 bg-amber-100 p-2 rounded">
+              <AlertCircle className="inline h-3 w-3 mr-1" />
+              Disclaimer: This delay process is only allowed 3 times per order. (Current delays: {order.delayCount || 0}/3)
+            </p>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-xs font-medium text-amber-800 mb-1 block">Reason for late delivery</label>
+                <Input placeholder="E.g., Customer didn't arrive to pick it up..." value={delayReason} onChange={(e) => setDelayReason(e.target.value)} className="bg-white border-amber-200" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-amber-800 mb-1 block">New Expected Date</label>
+                <Input type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} className="bg-white border-amber-200" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleDelay} disabled={!delayReason.trim() || !expectedDate || (order.delayCount || 0) >= 3}>
+                {(order.delayCount || 0) >= 3 ? "Limit Reached" : "Confirm Delay"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setIsHandoverPanelOpen(false)}>Cancel</Button>
             </div>
           </Card>
         )}
@@ -153,17 +276,28 @@ function OrderDetails() {
             <Card className="p-6 shadow-sm border-gold/20">
               <h3 className="font-display text-lg text-navy mb-4 flex items-center gap-2"><Scissors className="h-5 w-5 text-gold" /> Dress Details</h3>
               <div className="grid grid-cols-2 gap-4">
-                <DetailItem label="Dress Type" value={order.garment || order.dress} />
-                <DetailItem label="Category" value={order.category || "Women"} />
-                <DetailItem label="Occasion" value={order.occasion || "Wedding"} />
-                <DetailItem label="Fabric" value={order.fabric === 'own' ? "Customer's Own Fabric" : (order.fabric === 'tailor' ? "Tailor Provides Fabric" : order.fabric)} />
+                <DetailItem label="Dress Type" value={order.dressType || "Not specified"} />
+                <DetailItem label="Work Type" value={order.workType ? order.workType.charAt(0).toUpperCase() + order.workType.slice(1) : "Stitching"} />
+                <DetailItem label="Priority" value={order.priority || "Normal"} />
+                <DetailItem label="Date Created" value={new Date(order.createdAt).toLocaleDateString()} />
               </div>
             </Card>
 
             {/* Measurements */}
             <Card className="p-6 shadow-sm border-gold/20">
               <h3 className="font-display text-lg text-navy mb-4 flex items-center gap-2"><Ruler className="h-5 w-5 text-gold" /> Measurements</h3>
-              <p className="text-navy">{order.measurement === 'visit' ? "Customer will visit the shop for measurements." : "Customer has uploaded measurements."}</p>
+              {order.measurements && order.measurements.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
+                  {order.measurements.map((m: any, i: number) => (
+                    <div key={i} className="bg-cream/30 p-3 rounded-xl border border-border">
+                      <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">{m.label}</p>
+                      <p className="font-medium text-navy">{m.v || "—"}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-navy">No measurements provided.</p>
+              )}
             </Card>
 
             {/* Images & Notes */}
@@ -179,7 +313,7 @@ function OrderDetails() {
               )}
               <div>
                 <p className="text-xs uppercase text-mocha mb-1">Additional Notes</p>
-                <p className="text-navy bg-cream/30 p-3 rounded-lg border border-border">{order.notes || "No special instructions provided."}</p>
+                <p className="text-navy bg-cream/30 p-3 rounded-lg border border-border whitespace-pre-wrap">{order.notes || "No special instructions provided."}</p>
               </div>
             </Card>
           </div>
@@ -189,8 +323,8 @@ function OrderDetails() {
             <Card className="p-6 shadow-sm border-gold/20 bg-gradient-soft">
               <h3 className="font-display text-lg text-navy mb-4 flex items-center gap-2"><CalendarDays className="h-5 w-5 text-gold" /> Appointment</h3>
               <div className="space-y-3">
-                <DetailItem label="Date" value={order.due || "Pending"} />
-                <DetailItem label="Time Slot" value="11:30 AM (Requested)" />
+                <DetailItem label="Date" value={formattedDate} />
+                <DetailItem label="Time Slot" value={order.timeSlot || "Not specified"} />
               </div>
             </Card>
 
@@ -198,10 +332,9 @@ function OrderDetails() {
             <Card className="p-6 shadow-sm border-gold/20">
               <h3 className="font-display text-lg text-navy mb-4 flex items-center gap-2"><Banknote className="h-5 w-5 text-emerald-600" /> Payment</h3>
               <div className="space-y-3">
-                <DetailItem label="Payment ID" value={order.paymentId || "PAY-XXX"} valueClass="font-mono text-sm" />
-                <DetailItem label="Payment Status" value={order.paymentStatus || "Paid"} valueClass="text-emerald-600 font-medium" />
-                <DetailItem label="Amount Paid" value={order.priority === 'VIP' ? '₹1500' : order.priority === 'High' ? '₹500' : '₹500 (Base)'} />
-                <DetailItem label="Payment Time" value={order.bookedAt || "Just now"} />
+                <DetailItem label="Amount" value={`₹${order.amount || 0}`} valueClass="text-lg font-bold text-navy" />
+                <DetailItem label="Payment Status" value={order.paymentStatus === 'paid' ? 'Paid' : 'Pending'} valueClass={order.paymentStatus === 'paid' ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'} />
+                <DetailItem label="Payment Method" value={order.paymentMethod ? order.paymentMethod.replace("_", " ").toUpperCase() : "Online"} />
               </div>
             </Card>
           </div>
@@ -219,3 +352,4 @@ function DetailItem({ label, value, valueClass = "text-navy" }: { label: string,
     </div>
   );
 }
+

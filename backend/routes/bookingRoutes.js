@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
 const { protect } = require('../middleware/auth');
@@ -19,4 +19,12 @@ router.put('/:id/reschedule', protect, roleCheck('tailor'), bookingController.re
 router.put('/:id/start-work', protect, roleCheck('tailor'), bookingController.startWork);
 router.put('/:id/update-slot', protect, bookingController.updateBookingSlot);
 
+router.put('/:id/request-cash', protect, roleCheck('customer'), bookingController.requestCashPayment);
+router.put('/:id/confirm-cash', protect, roleCheck('tailor'), bookingController.confirmCashPayment);
+router.put('/:id/reject-cash', protect, roleCheck('tailor'), bookingController.rejectCashPayment);
+
+router.put('/:id/handover', protect, roleCheck('tailor'), bookingController.markHandover);
+router.put('/:id/delay-handover', protect, roleCheck('tailor'), bookingController.delayHandover);
+
 module.exports = router;
+

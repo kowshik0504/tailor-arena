@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+ï»¿import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ const statusTint: Record<string, string> = {
 function AdminPayments() {
   const [data, setData] = useState<any>(null);
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
+  const [nameFilter, setNameFilter] = useState<string | null>(null);
 
   useEffect(() => {
     api.get("/admin/payments").then(res => setData(res.data)).catch(console.error);
@@ -33,6 +34,7 @@ function AdminPayments() {
   if (!data) return <PageShell title="Payments" subtitle="Loading..."><div /></PageShell>;
 
   const { kpis, flow, txns } = data;
+  const filteredTxns = nameFilter ? txns.filter((t: any) => t.who === nameFilter) : txns;
 
   return (
     <>
@@ -52,7 +54,7 @@ function AdminPayments() {
           </tr>
         </thead>
         <tbody>
-          {txns.map((t: any) => (
+          {filteredTxns.map((t: any) => (
             <tr key={t.id} className="border-b border-gray-200">
               <td className="py-2">{t.id}</td>
               <td>{t.who}</td>
@@ -82,7 +84,7 @@ function AdminPayments() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="font-display text-xl text-navy">Payment flow</h3>
-              <p className="text-xs text-muted-foreground">Gross processing volume — last 7 days</p>
+              <p className="text-xs text-muted-foreground">Gross processing volume ï¿½ last 7 days</p>
             </div>
             <Badge className="rounded-full bg-gold/15 text-navy-deep border border-gold/40">
               <TrendingUp className="h-3 w-3 mr-1" /> Live
@@ -116,11 +118,11 @@ function AdminPayments() {
           </div>
           <div className="space-y-2">
             {txns.length === 0 && <p className="text-sm text-mocha">No transactions found.</p>}
-            {txns.map((t: any) => (
+            {filteredTxns.map((t: any) => (
               <div key={t.id} className="grid grid-cols-2 lg:grid-cols-6 items-center gap-3 p-3 rounded-xl border border-gold/60 bg-white/40">
                 <div>
                   <p className="text-sm font-medium text-navy">{t.who}</p>
-                  <p className="text-[11px] text-muted-foreground">{t.id} · {new Date(t.when).toLocaleDateString()}</p>
+                  <p className="text-[11px] text-muted-foreground">{t.id} ï¿½ {new Date(t.when).toLocaleDateString()}</p>
                 </div>
                 <Badge className="rounded-full bg-champagne text-navy text-[10px] w-fit">{t.type}</Badge>
                 <p className="text-sm font-display text-navy tabular-nums">{t.amount}</p>
@@ -183,5 +185,6 @@ function Stat({ icon, label, value, trend, tint }: any) {
     </Card>
   );
 }
+
 
 

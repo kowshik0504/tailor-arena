@@ -21,9 +21,14 @@ import { roleHomePath } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import type { Role } from "@/lib/role";
-
-export const Route = createFileRoute("/login")({ component: Login });
-
+export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      redirect: search.redirect as string | undefined,
+    }
+  },
+  component: Login 
+});
 const roleOptions: {
   value: Role;
   title: string;
@@ -70,6 +75,7 @@ function Login() {
 
   const { login, verify2FALogin } = useAuth();
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -132,12 +138,20 @@ function Login() {
           setStep("2fa");
           setLoginError("");
         } else {
-          navigate({ to: roleHomePath[res.role as Role] });
+          if (redirect) {
+            navigate({ to: redirect });
+          } else {
+            navigate({ to: roleHomePath[res.role as Role] });
+          }
         }
       } else if (step === "2fa") {
         if (trustDevice === null) return;
         const user = await verify2FALogin(email, otp, trustDevice);
-        navigate({ to: roleHomePath[user.role as Role] });
+        if (redirect) {
+          navigate({ to: redirect });
+        } else {
+          navigate({ to: roleHomePath[user.role as Role] });
+        }
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? "Failed. Please check your credentials.";

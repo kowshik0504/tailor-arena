@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+﻿const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const TailorProfile = require('../models/TailorProfile');
 const otpGenerator = require('otp-generator');
@@ -116,7 +116,7 @@ exports.sendFreemiumEmail = async (email, name) => {
             </table>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" style="background-color: #6C63FF; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block; box-shadow: 0 4px 10px rgba(108, 99, 255, 0.3);">Access Your Dashboard</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" style="background-color: #6C63FF; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block; box-shadow: 0 4px 10px rgba(108, 99, 255, 0.3);">Access Your Dashboard</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -166,7 +166,7 @@ exports.sendAcceptanceEmail = async (email, name, tailorName, date, time, bookin
             <p style="color: #636E72; font-size: 14px; line-height: 1.6;">Please visit the shop at your scheduled time. If you need to navigate or call the tailor, check your dashboard.</p>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/dashboard?view=${bookingId}" style="background-color: #6C63FF; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">View Booking Details</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer?view=${bookingId}" style="background-color: #6C63FF; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">View Booking Details</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -211,7 +211,7 @@ exports.sendRejectionEmail = async (email, name, tailorName, reason) => {
             <p style="color: #636E72; font-size: 14px; line-height: 1.6;">Don't worry! There are many other talented tailors available on Tailor Arena. You can browse and book another professional right away.</p>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/dashboard" style="background-color: #2D3436; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Browse Other Tailors</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer" style="background-color: #2D3436; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Browse Other Tailors</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -223,7 +223,7 @@ exports.sendRejectionEmail = async (email, name, tailorName, reason) => {
   });
 };
 
-exports.sendCompletionEmail = async (email, name, tailorName, dressType) => {
+exports.sendCompletionEmail = async (email, name, tailorName, dressType, amount = 0, baseAmountPaid = 500, bookingId) => {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -234,6 +234,9 @@ exports.sendCompletionEmail = async (email, name, tailorName, dressType) => {
   if (fs.existsSync(logoPath)) {
     attachments.push({ filename: 'logo.jpeg', path: logoPath, cid: 'logo' });
   }
+
+  const remainingAmount = amount > baseAmountPaid ? amount - baseAmountPaid : 0;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
@@ -249,13 +252,34 @@ exports.sendCompletionEmail = async (email, name, tailorName, dressType) => {
             <h2 style="margin-top: 0; font-size: 24px;">Great news, ${name}!</h2>
             <p style="color: #636E72; font-size: 16px; line-height: 1.6;">Your <strong>${dressType}</strong> is successfully completed by <strong>${tailorName}</strong> and is ready for pickup/delivery!</p>
             
-            <div style="background-color: #F0FFF4; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #48BB78;">
-                <h3 style="color: #2F855A; margin-top: 0; font-size: 18px;">Order Completed</h3>
-                <p style="margin: 10px 0; color: #2F855A;">Thank you for choosing Tailor Arena. We hope you love your new outfit!</p>
+            <div style="background-color: #F0FFF4; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #48BB78; text-align: left;">
+                <h3 style="color: #2F855A; margin-top: 0; font-size: 18px; text-align: center;">Order Payment Details</h3>
+                <p style="margin: 10px 0; color: #2F855A; text-align: center;">Thank you for choosing Tailor Arena. We hope you love your new outfit!</p>
+                <hr style="border: 0; border-top: 1px solid #C6F6D5; margin: 15px 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 10px;">
+                    <span style="color: #2D3436;">Total Order Amount:</span>
+                    <strong style="color: #2D3436;">₹${amount}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 10px;">
+                    <span style="color: #2D3436;">Base Amount Paid:</span>
+                    <strong style="color: #48BB78;">₹${baseAmountPaid}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #C6F6D5;">
+                    <span style="color: #E53E3E;">Remaining Balance:</span>
+                    <strong style="color: #E53E3E;">₹${remainingAmount}</strong>
+                </div>
             </div>
 
+            ${remainingAmount > 0 ? `
+            <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px; align-items: center;">
+                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=upi" style="background-color: #0984E3; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Online Now (UPI/Card)</a>
+                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=netbanking" style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay via Netbanking</a>
+                <a href="${frontendUrl}/customer/pay-cash?orderId=${bookingId}" style="background-color: #ffffff; color: #0984E3; border: 2px solid #0984E3; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Cash to Tailor</a>
+            </div>
+            ` : ''}
+
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/dashboard" style="background-color: #48BB78; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">View in Dashboard</a>
+                <a href="${frontendUrl}/customer" style="color: #636E72; text-decoration: underline; font-size: 14px;">View in Dashboard</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -300,7 +324,7 @@ exports.sendDelayEmail = async (email, name, tailorName, newDate) => {
             <p style="color: #636E72; font-size: 14px; line-height: 1.6;">Thank you for your patience and understanding. We are working hard to get your outfit ready!</p>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/dashboard" style="background-color: #2D3436; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Check Status</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer" style="background-color: #2D3436; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Check Status</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -344,7 +368,7 @@ exports.sendStartWorkEmail = async (email, name, tailorName, dressType, tailorId
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/book/${tailorId}?updateBooking=${bookingId}" style="background-color: #3182CE; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Book New Slot</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/book/${tailorId}?updateBooking=${bookingId}" style="background-color: #3182CE; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Book New Slot</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -390,7 +414,7 @@ exports.sendSlotUpdateEmail = async (email, name, tailorName, date, time) => {
             <p style="color: #636E72; font-size: 14px; line-height: 1.6; text-align: center; font-style: italic;">"Please ensure you acknowledge and visit the tailor accordingly at this new time."</p>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/dashboard" style="background-color: #2D3436; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">View in Dashboard</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer" style="background-color: #2D3436; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">View in Dashboard</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -434,6 +458,99 @@ exports.sendSignupOTP = async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.verifyTailorOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    const tailor = await TailorProfile.findOne({ email });
+    
+    if (!tailor) {
+      return res.status(404).json({ message: 'Tailor not found' });
+    }
+
+    if (tailor.verificationOTP !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    if (Date.now() > tailor.verificationOTPExpires) {
+      return res.status(400).json({ message: 'OTP has expired' });
+    }
+
+    tailor.isVerified = true;
+    tailor.verificationOTP = undefined;
+    tailor.verificationOTPExpires = undefined;
+    await tailor.save();
+
+    res.json({ message: 'Email verified successfully. You can now log in.' });
+
+  } catch (error) {
+    console.error('Verify Tailor OTP Error:', error);
+    res.status(500).json({ message: 'Error verifying OTP' });
+  }
+};
+
+exports.sendHandoverEmail = async (email, name, dressType, tailorName) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Your clothes have been handed over! 🛍️',
+      html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2 style="color: #2D3436; text-align: center;">Order Completed & Handed Over</h2>
+        <p>Hi ${name},</p>
+        <p>Your <strong>${dressType}</strong> has been successfully bought by you from <strong>${tailorName}</strong>.</p>
+        <p>Thank you for choosing Tailor Arena! We hope you love your new outfit.</p>
+        <p>Best Regards,<br>Tailor Arena Team</p>
+      </div>`
+    });
+  } catch (error) {
+    console.error('Error sending handover email:', error);
+  }
+};
+
+exports.sendDelayEmail = async (email, name, dressType, tailorName, reason, expectedDate, delayCount) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Update regarding your order delivery 🕒',
+      html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2 style="color: #E67E22; text-align: center;">Delivery Delayed</h2>
+        <p>Hi ${name},</p>
+        <p>Your tailor, <strong>${tailorName}</strong>, has updated the handover date for your <strong>${dressType}</strong>.</p>
+        <p><strong>Reason for delay:</strong> ${reason}</p>
+        <p><strong>New Expected Date:</strong> ${new Date(expectedDate).toLocaleDateString()}</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 0.85em; color: #7f8c8d; text-align: center;">Disclaimer: This delay process is only allowed 3 times per order. (Current delays: ${delayCount}/3)</p>
+      </div>`
+    });
+  } catch (error) {
+    console.error('Error sending delay email:', error);
   }
 };
 
@@ -727,9 +844,14 @@ exports.updateProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const { name, email } = req.body;
+    const { name, email, phone, language, location } = req.body;
 
     if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (language) user.language = language;
+    if (location) {
+      user.location = { ...user.location, ...location };
+    }
 
     if (email && email !== user.email) {
       const emailExists = await User.findOne({ email });
@@ -745,6 +867,9 @@ exports.updateProfile = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
+      language: user.language,
+      location: user.location,
       role: user.role,
       profilePic: user.profilePic,
       token: generateToken(user._id)

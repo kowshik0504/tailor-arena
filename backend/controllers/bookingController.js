@@ -1,6 +1,6 @@
-const Booking = require('../models/Booking');
+﻿const Booking = require('../models/Booking');
 const TailorProfile = require('../models/TailorProfile');
-const { sendStartWorkEmail, sendSlotUpdateEmail } = require('./authController');
+const { sendStartWorkEmail, sendSlotUpdateEmail, sendHandoverEmail, sendDelayEmail } = require('./authController');
 const notificationService = require('../services/notificationService');
 
 const DEFAULT_SLOTS = [
@@ -85,8 +85,7 @@ exports.createBooking = async (req, res) => {
     if (!tailor.paid && !tailor.activationFeeTriggered) {
       const pastBookings = await Booking.countDocuments({ tailor: tailorId });
       if (pastBookings === 1) { // 1 because this booking just got created
-        tailor.activationFeeTriggered = true;
-        await tailor.save();
+        await TailorProfile.updateOne({ _id: tailor._id }, { $set: { activationFeeTriggered: true } });
         console.log(`\n========================================`);
         console.log(`🔔 FREEMIUM ACTIVATION TRIGGERED!`);
         console.log(`Tailor ID: ${tailorId}`);
@@ -165,7 +164,7 @@ exports.acceptBooking = async (req, res) => {
     // Send Acceptance Notification
     try {
       await notificationService.notifyBookingAccepted(
-        profile.user._id, // tailor's user ID for preference check
+        req.user._id, // tailor's user ID for preference check
         booking.customer.email,
         booking.customer.name,
         booking.customer.phone, // might be undefined, that's fine
@@ -209,7 +208,7 @@ exports.rejectBooking = async (req, res) => {
     // Send Rejection Notification
     try {
       await notificationService.notifyBookingRejected(
-        profile.user._id,
+        req.user._id,
         booking.customer.email,
         booking.customer.name,
         booking.customer.phone,
@@ -315,12 +314,15 @@ exports.completeBooking = async (req, res) => {
     // Send Completion Notification
     try {
       await notificationService.notifyBookingCompleted(
-        profile.user._id,
+        req.user._id,
         booking.customer.email,
         booking.customer.name,
         booking.customer.phone,
         profile.shopName || req.user.name,
-        booking.dressType
+        booking.dressType,
+        booking.amount,
+        booking.baseAmountPaid,
+        booking._id
       );
     } catch (err) {
       console.error('Completion email failed:', err.message);
@@ -356,7 +358,7 @@ exports.rescheduleBooking = async (req, res) => {
     // Send Delay Notification
     try {
       await notificationService.notifyBookingDelayed(
-        profile.user._id,
+        req.user._id,
         booking.customer.email,
         booking.customer.name,
         booking.customer.phone,
@@ -465,6 +467,172 @@ exports.updateBookingSlot = async (req, res) => {
     res.json(updated);
   } catch (error) {
     console.error('Update Slot Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.requestCashPayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.customer.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+
+    booking.cashRequestStatus = 'pending';
+    const updated = await booking.save();
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.confirmCashPayment = async (req, res) => {
+  try {
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile) return res.status(404).json({ message: 'Tailor profile not found' });
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.tailor.toString() !== profile._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+
+    booking.cashRequestStatus = 'approved';
+    booking.paymentStatus = 'paid';
+    const updated = await booking.save();
+
+    const remainingAmount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+    profile.earnings = (profile.earnings || 0) + remainingAmount;
+    await profile.save();
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.rejectCashPayment = async (req, res) => {
+  try {
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile) return res.status(404).json({ message: 'Tailor profile not found' });
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.tailor.toString() !== profile._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+
+    booking.cashRequestStatus = 'rejected';
+    const updated = await booking.save();
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.markHandover = async (req, res) => {
+  try {
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile) return res.status(404).json({ message: 'Tailor profile not found' });
+
+    const booking = await Booking.findById(req.params.id).populate('customer').populate('tailor');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    if (booking.tailor._id.toString() !== profile._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    booking.status = 'handed_over';
+    await booking.save();
+
+    if (booking.customer.email) {
+      await sendHandoverEmail(booking.customer.email, booking.customer.name, booking.dressType, booking.tailor.businessName);
+    }
+
+    res.json({ message: 'Handover marked successfully', booking });
+  } catch (error) {
+    console.error('Error in markHandover:', error);
+    res.status(500).json({ message: 'Error marking handover' });
+  }
+};
+
+exports.delayHandover = async (req, res) => {
+  try {
+    const { reason, expectedDate } = req.body;
+    
+    if (!reason || !expectedDate) {
+      return res.status(400).json({ message: 'Reason and expected date are required' });
+    }
+
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile) return res.status(404).json({ message: 'Tailor profile not found' });
+
+    const booking = await Booking.findById(req.params.id).populate('customer').populate('tailor');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    if (booking.tailor._id.toString() !== profile._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (booking.delayCount >= 3) {
+      return res.status(400).json({ message: 'Maximum allowed delays (3) reached for this order.' });
+    }
+
+    booking.status = 'delayed';
+    booking.delayCount += 1;
+    booking.delayReason = reason;
+    booking.expectedHandoverDate = expectedDate;
+
+    await booking.save();
+
+    if (booking.customer.email) {
+      await sendDelayEmail(booking.customer.email, booking.customer.name, booking.dressType, booking.tailor.businessName, reason, expectedDate, booking.delayCount);
+    }
+
+    res.json({ message: 'Handover delay recorded', booking });
+  } catch (error) {
+    console.error('Error in delayHandover:', error);
+    res.status(500).json({ message: 'Error recording delay' });
+  }
+};
+
+exports.payOnline = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    booking.paymentMethod = req.body.method || 'online';
+    booking.onlinePaymentStatus = 'pending';
+    await booking.save();
+    res.json({ message: 'Online payment initiated', booking });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.confirmOnlinePayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('tailor');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    booking.onlinePaymentStatus = 'approved';
+    booking.paymentStatus = 'paid';
+    await booking.save();
+    
+    const profile = await require('../models/TailorProfile').findOne({ user: booking.tailor.user });
+    if (profile) {
+      const amount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+      profile.earnings += amount;
+      profile.walletBalance = (profile.walletBalance || 0) + amount;
+      await profile.save();
+    }
+    res.json({ message: 'Online payment confirmed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.rejectOnlinePayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    booking.onlinePaymentStatus = 'rejected';
+    await booking.save();
+    res.json({ message: 'Online payment rejected' });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

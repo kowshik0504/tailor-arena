@@ -25,6 +25,14 @@ const userSchema = new mongoose.Schema({
 otpExpires: {
   type: Date
 },
+phone: {
+  type: String,
+  trim: true
+},
+language: {
+  type: String,
+  default: 'English'
+},
   location: {
   street: String,
   area: String,

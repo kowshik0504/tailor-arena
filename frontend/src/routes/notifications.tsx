@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, IndianRupee, CalendarDays, AlertCircle, Bell, Check } from "lucide-react";
+import { Package, IndianRupee, CalendarDays, AlertCircle, Bell, Check, HandCoins, X, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/notifications")({ component: Notifications });
 
@@ -15,6 +15,11 @@ type Reminder = {
   when: string;
   I: typeof Bell;
   tint: string;
+  isCashRequest?: boolean;
+  isOnlineRequest?: boolean;
+  orderId?: string;
+  onApprove?: () => void;
+  onReject?: () => void;
 };
 
 const filters = ["All", "Delivery", "Payment", "Appointment", "Delayed"];
@@ -39,8 +44,17 @@ function Notifications() {
     fetchOrders();
   }, []);
 
+  const handleCashAction = async (orderId: string, action: 'confirm' | 'reject') => {
+    try {
+      await api.put(`/bookings/${orderId}/${action}-cash`);
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, cashRequestStatus: action === 'confirm' ? 'approved' : 'rejected', paymentStatus: action === 'confirm' ? 'paid' : o.paymentStatus } : o));
+    } catch (err) {
+      console.error(`Failed to ${action} cash payment`, err);
+    }
+  };
+
   const reminders: Reminder[] = orders
-    .filter(o => ["Pending", "New", "Ready for Delivery", "Request Changes", "Changes Requested", "In Stitching"].includes(o.status))
+    .filter(o => ["Pending", "New", "Ready for Delivery", "Request Changes", "Changes Requested", "In Stitching"].includes(o.status) || o.cashRequestStatus === 'pending')
     .map(o => {
       let type: "Delivery" | "Payment" | "Appointment" | "Delayed" = "Appointment";
       let title = "Action needed";
@@ -48,7 +62,12 @@ function Notifications() {
       let tint = "bg-gradient-rose";
       let when = o.due || o.delivery || "Soon";
 
-      if (o.status === "Pending" || o.status === "New") {
+      if (o.cashRequestStatus === 'pending') {
+        type = "Payment";
+        title = "Cash Payment Handover";
+        I = HandCoins;
+        tint = "bg-gradient-cream text-navy";
+      } else if (o.status === "Pending" || o.status === "New") {
         type = "Appointment";
         title = "New Booking Request";
         I = CalendarDays;
@@ -73,10 +92,14 @@ function Notifications() {
       return {
         type,
         title,
-        detail: `${o.customer} · ${o.garment || o.dress || "Custom Order"}`,
+        detail: o.cashRequestStatus === 'pending' ? `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || 500)} in cash.` : `${o.customer?.name || 'Customer'} · ${o.dressType || o.dress || "Custom Order"}`,
         when,
         I,
-        tint
+        tint,
+        isCashRequest: o.cashRequestStatus === 'pending',
+        orderId: o._id,
+        onApprove: () => handleCashAction(o._id, 'confirm'),
+        onReject: () => handleCashAction(o._id, 'reject')
       };
     });
 
@@ -105,18 +128,32 @@ function Notifications() {
             </div>
             <p className="font-display text-lg mt-4">{r.title}</p>
             <p className="text-xs text-muted-foreground mt-1">{r.detail}</p>
-            <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between">
-              <span className="text-[11px] text-mocha">{r.when}</span>
-              <Button size="sm" variant="ghost" className="rounded-full h-7 text-xs gap-1 opacity-60 group-hover:opacity-100">
-                <Check className="h-3 w-3" /> Done
-              </Button>
-            </div>
+            
+            {r.isCashRequest ? (
+              <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" className="rounded-full h-8 flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={r.onReject}>
+                  <X className="h-3 w-3 mr-1" /> No
+                </Button>
+                <Button size="sm" className="rounded-full h-8 flex-1 text-xs bg-navy text-cream" onClick={r.onApprove}>
+                  <Check className="h-3 w-3 mr-1" /> Received in hand
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between">
+                <span className="text-[11px] text-mocha">{r.when}</span>
+                <Button size="sm" variant="ghost" className="rounded-full h-7 text-xs gap-1 opacity-60 group-hover:opacity-100">
+                  <Check className="h-3 w-3" /> Done
+                </Button>
+              </div>
+            )}
           </Card>
         ))}
       </div>
     </PageShell>
   );
 }
+
+
 
 
 

@@ -24,7 +24,10 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted || isPublic || loading) return;
     if (!user) {
-      navigate({ to: "/login" });
+      navigate({ 
+        to: "/login",
+        search: { redirect: window.location.pathname + window.location.search }
+      });
     }
   }, [mounted, isPublic, user, loading, navigate]);
 

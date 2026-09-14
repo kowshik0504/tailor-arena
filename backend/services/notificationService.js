@@ -89,18 +89,18 @@ exports.notifyBookingDelayed = async (tailorId, customerEmail, customerName, cus
   }
 };
 
-exports.notifyBookingCompleted = async (tailorId, customerEmail, customerName, customerPhone, tailorName, dressType) => {
+exports.notifyBookingCompleted = async (tailorId, customerEmail, customerName, customerPhone, tailorName, dressType, amount, baseAmountPaid, bookingId) => {
   const [emailEnabled, whatsappEnabled] = await Promise.all([
     isPreferenceEnabled(tailorId, 'emailNotifications'),
     isPreferenceEnabled(tailorId, 'whatsappUpdates')
   ]);
 
   if (emailEnabled) {
-    await authController.sendCompletionEmail(customerEmail, customerName, tailorName, dressType);
+    await authController.sendCompletionEmail(customerEmail, customerName, tailorName, dressType, amount, baseAmountPaid, bookingId);
   }
 
   if (whatsappEnabled && customerPhone) {
-    mockSendWhatsApp(customerPhone, `Hi ${customerName}, great news! Your ${dressType} is ready for pickup/delivery from ${tailorName}.`);
+    mockSendWhatsApp(customerPhone, `Hi ${customerName}, your ${dressType} is ready for delivery!`);
   }
 };
 

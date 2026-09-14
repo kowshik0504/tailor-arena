@@ -1,4 +1,4 @@
-const TailorProfile = require('../models/TailorProfile');
+﻿const TailorProfile = require('../models/TailorProfile');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { sendFreemiumEmail } = require('./authController');
@@ -692,7 +692,7 @@ exports.withdrawFromWallet = async (req, res) => {
     }
 
     profile.walletBalance -= amount;
-    profile.withdrawals.push({ amount, date: new Date(), status: 'completed' });
+    profile.withdrawals.push({ amount, date: new Date(), status: 'pending' });
     await profile.save();
 
     res.json({ message: 'Withdrawal successful', balance: profile.walletBalance });
@@ -722,5 +722,6 @@ exports.resubmitVerification = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 

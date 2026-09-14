@@ -1,11 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  CircleCheck, CircleX, Scissors, CalendarDays, Truck, MessageCircle, Bell, Sparkles,
+  CircleCheck, CircleX, Scissors, CalendarDays, Truck, MessageCircle, Bell, Sparkles, HandCoins
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
 export const Route = createFileRoute("/customer/notifications")({ component: Notifications });
 
@@ -19,7 +21,29 @@ const items = [
 ];
 
 function Notifications() {
-  const unread = items.filter((i) => i.unread).length;
+  const [dynamicItems, setDynamicItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/bookings/customer').then(res => {
+      const updates = res.data
+        .filter((o: any) => o.cashRequestStatus === 'approved' || o.cashRequestStatus === 'rejected')
+        .map((o: any) => ({
+          icon: o.cashRequestStatus === 'approved' ? CircleCheck : CircleX,
+          tint: o.cashRequestStatus === 'approved' ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700",
+          title: o.cashRequestStatus === 'approved' ? "Payment Received" : "Payment Declined",
+          body: o.cashRequestStatus === 'approved' 
+            ? `${o.tailor?.user?.name || 'Your tailor'} confirmed receiving your cash payment of ₹${o.amount - (o.baseAmountPaid || 500)}.`
+            : `${o.tailor?.user?.name || 'Your tailor'} declined the cash handover request.`,
+          time: "Just now",
+          unread: true
+        }));
+      setDynamicItems(updates);
+    }).catch(console.error);
+  }, []);
+
+  const allItems = [...dynamicItems, ...items];
+  const unread = allItems.filter((i) => i.unread).length;
+  
   return (
     <PageShell title="Notifications" subtitle="Booking updates, messages and delivery alerts.">
       <Card className="p-5 border-gold/60 shadow-luxe flex items-center justify-between">
@@ -36,7 +60,7 @@ function Notifications() {
       </Card>
 
       <Card className="border-gold/60 shadow-luxe divide-y divide-border/40">
-        {items.map((n, i) => (
+        {allItems.map((n, i) => (
           <div key={i} className={`flex items-start gap-4 p-5 ${n.unread ? "bg-champagne/30" : ""}`}>
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${n.tint}`}>
               <n.icon className="h-4 w-4" />
@@ -60,6 +84,7 @@ function Notifications() {
     </PageShell>
   );
 }
+
 
 
 
