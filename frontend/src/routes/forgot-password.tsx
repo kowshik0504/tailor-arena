@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AuthShell } from "@/components/AuthShell";
 import { Input } from "@/components/ui/input";
@@ -75,7 +75,7 @@ function ForgotPassword() {
         step !== "success" && (
           <span>
             Remember your password?{" "}
-            <Link to="/login" className="text-gold hover:underline font-medium">Sign in</Link>
+            <Link to={"/login" as any} className="text-gold hover:underline font-medium">Sign in</Link>
           </span>
         )
       }
@@ -117,7 +117,7 @@ function ForgotPassword() {
             <Check className="h-10 w-10 text-navy-deep" strokeWidth={3} />
           </div>
           <p className="text-navy mt-6 font-display text-lg">Password Updated</p>
-          <Link to="/login">
+          <Link to={"/login" as any}>
             <Button className="mt-8 w-full h-12 rounded-xl bg-gradient-gold text-navy-deep font-semibold shadow-glow">
               Sign in now
             </Button>
@@ -201,6 +201,7 @@ function Field({ icon, label, children }: any) {
     </div>
   );
 }
+
 
 
 

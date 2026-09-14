@@ -1,4 +1,4 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+﻿import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Ruler, Scissors, Sparkles,
   CalendarDays, Bell, BarChart3, Settings, LogOut,
@@ -224,6 +224,7 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
 
 
 

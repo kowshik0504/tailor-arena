@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, IndianRupee, CalendarDays, AlertCircle, Bell, Check, HandCoins, X } from "lucide-react";
+import { Package, IndianRupee, CalendarDays, AlertCircle, Bell, Check, HandCoins, X, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/notifications")({ component: Notifications });
 
@@ -16,6 +16,7 @@ type Reminder = {
   I: typeof Bell;
   tint: string;
   isCashRequest?: boolean;
+  isOnlineRequest?: boolean;
   orderId?: string;
   onApprove?: () => void;
   onReject?: () => void;
@@ -151,6 +152,7 @@ function Notifications() {
     </PageShell>
   );
 }
+
 
 
 

@@ -90,11 +90,12 @@ exports.getPaymentsData = async (req, res) => {
         completedWeek: completedWeekCount
       },
       flow,
-      txns: txns.slice(0, 20)
+      txns: txns
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to fetch payments data" });
   }
 };
+
 

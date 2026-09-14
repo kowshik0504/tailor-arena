@@ -1,4 +1,4 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
+﻿import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
 import { Search, Bell, LogOut, Crown, ChevronLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -231,6 +231,7 @@ export function PageShell({
     </>
   );
 }
+
 
 
 

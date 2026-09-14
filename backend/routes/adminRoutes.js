@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const {
   getPendingTailors, verifyTailor, getChangeRequests,
@@ -29,4 +29,8 @@ router.put('/approve-change/:id', approveChangeRequest);
 router.put('/reject-change/:id', rejectChangeRequest);
 router.get('/system-health', getSystemHealth);
 
+router.put('/withdrawals/:tailorId/:withdrawalId/approve', require('../controllers/adminPayments').approveWithdrawal);
+router.put('/withdrawals/:tailorId/:withdrawalId/reject', require('../controllers/adminPayments').rejectWithdrawal);
+
 module.exports = router;
+

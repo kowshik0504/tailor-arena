@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ function Profile() {
         street: user.location?.street || "",
         area: user.location?.area || "",
         pincode: user.location?.pincode || "",
-        language: user.language || "",
+        language: (user as any).language || "",
       });
     }
   }, [user]);
@@ -58,7 +58,7 @@ function Profile() {
         street: user.location?.street || "",
         area: user.location?.area || "",
         pincode: user.location?.pincode || "",
-        language: user.language || "",
+        language: (user as any).language || "",
       });
     }
   };
@@ -165,6 +165,7 @@ function Field({ label, ...props }: { label: string } & React.InputHTMLAttribute
     </div>
   );
 }
+
 
 
 

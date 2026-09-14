@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -50,7 +50,7 @@ export default function Hero({ phase }: { phase: string }) {
         </p>
 
         <div className="mt-12 flex flex-col sm:flex-row gap-4">
-            <Link to="/login">
+            <Link to={"/login" as any}>
                 <Button className="px-10 py-7 rounded-full bg-gradient-gold text-navy-deep shadow-glow hover:opacity-90 text-lg font-bold gap-3">
                     <Sparkles className="h-5 w-5" /> Explore Now
                 </Button>
@@ -60,6 +60,7 @@ export default function Hero({ phase }: { phase: string }) {
     </section>
   );
 }
+
 
 
 

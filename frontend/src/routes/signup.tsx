@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AuthShell } from "@/components/AuthShell";
 import { Input } from "@/components/ui/input";
@@ -69,7 +69,7 @@ function SignupForm({
       footer={
         <span>
           Already have an account?{" "}
-          <Link to="/login" className="text-gold hover:underline font-medium">Sign in</Link>
+          <Link to={"/login" as any} className="text-gold hover:underline font-medium">Sign in</Link>
         </span>
       }
     >
@@ -267,6 +267,7 @@ function RoleCard({ active, onClick, icon, title, desc }: any) {
     </button>
   );
 }
+
 
 
 
