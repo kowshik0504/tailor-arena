@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   customer: {
@@ -24,7 +24,16 @@ const bookingSchema = new mongoose.Schema({
     enum: ['pending', 'acknowledged', 'confirmed', 'completed', 'cancelled', 'hold', 'in-progress', 'delayed', 'handed_over'],
     default: 'confirmed'
   },
-  paymentStatus: {
+  onlinePaymentStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected']
+    },
+    onlinePaymentStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    paymentStatus: {
     type: String,
     enum: ['pending', 'paid', 'pay_later'],
     default: 'pending'
@@ -43,7 +52,7 @@ const bookingSchema = new mongoose.Schema({
   phonepeTransactionId: { type: String },
   paymentMethod: {
     type: String,
-    enum: ['gpay', 'phonepe', 'credit_card', 'debit_card', 'cash', 'online']
+    enum: ['gpay', 'phonepe', 'credit_card', 'debit_card', 'cash', 'online', 'upi', 'netbanking']
   },
   notes: { type: String },
   designImg: { type: String },
@@ -65,3 +74,5 @@ const bookingSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);
+
+

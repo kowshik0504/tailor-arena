@@ -1,9 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreditCard, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import api from "@/lib/api";
 
 export const Route = createFileRoute("/customer/dummy-payment")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -81,3 +82,4 @@ function DummyPayment() {
     </PageShell>
   );
 }
+

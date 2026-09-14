@@ -1,4 +1,4 @@
-const Booking = require('../models/Booking');
+﻿const Booking = require('../models/Booking');
 const TailorProfile = require('../models/TailorProfile');
 const { sendStartWorkEmail, sendSlotUpdateEmail, sendHandoverEmail, sendDelayEmail } = require('./authController');
 const notificationService = require('../services/notificationService');
@@ -498,7 +498,7 @@ exports.confirmCashPayment = async (req, res) => {
     booking.paymentStatus = 'paid';
     const updated = await booking.save();
 
-    const remainingAmount = booking.amount - (booking.baseAmountPaid || 500);
+    const remainingAmount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
     profile.earnings = (profile.earnings || 0) + remainingAmount;
     await profile.save();
 
@@ -588,5 +588,51 @@ exports.delayHandover = async (req, res) => {
   } catch (error) {
     console.error('Error in delayHandover:', error);
     res.status(500).json({ message: 'Error recording delay' });
+  }
+};
+
+exports.payOnline = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    booking.paymentMethod = req.body.method || 'online';
+    booking.onlinePaymentStatus = 'pending';
+    await booking.save();
+    res.json({ message: 'Online payment initiated', booking });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.confirmOnlinePayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('tailor');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    booking.onlinePaymentStatus = 'approved';
+    booking.paymentStatus = 'paid';
+    await booking.save();
+    
+    const profile = await require('../models/TailorProfile').findOne({ user: booking.tailor.user });
+    if (profile) {
+      const amount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+      profile.earnings += amount;
+      profile.walletBalance = (profile.walletBalance || 0) + amount;
+      await profile.save();
+    }
+    res.json({ message: 'Online payment confirmed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.rejectOnlinePayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    booking.onlinePaymentStatus = 'rejected';
+    await booking.save();
+    res.json({ message: 'Online payment rejected' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

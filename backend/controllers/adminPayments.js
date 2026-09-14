@@ -99,3 +99,36 @@ exports.getPaymentsData = async (req, res) => {
 };
 
 
+
+exports.approveWithdrawal = async (req, res) => {
+  try {
+    const { tailorId, withdrawalId } = req.params;
+    const TailorProfile = require('../models/TailorProfile');
+    const profile = await TailorProfile.findById(tailorId);
+    if (!profile) return res.status(404).json({ message: 'Tailor not found' });
+    const withdrawal = profile.withdrawals.id(withdrawalId);
+    if (!withdrawal) return res.status(404).json({ message: 'Withdrawal not found' });
+    withdrawal.status = 'completed';
+    await profile.save();
+    res.json({ message: 'Withdrawal approved successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.rejectWithdrawal = async (req, res) => {
+  try {
+    const { tailorId, withdrawalId } = req.params;
+    const TailorProfile = require('../models/TailorProfile');
+    const profile = await TailorProfile.findById(tailorId);
+    if (!profile) return res.status(404).json({ message: 'Tailor not found' });
+    const withdrawal = profile.withdrawals.id(withdrawalId);
+    if (!withdrawal) return res.status(404).json({ message: 'Withdrawal not found' });
+    withdrawal.status = 'rejected';
+    profile.walletBalance += withdrawal.amount;
+    await profile.save();
+    res.json({ message: 'Withdrawal rejected and amount refunded' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

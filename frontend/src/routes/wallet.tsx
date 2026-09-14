@@ -199,7 +199,7 @@ function TailorWallet() {
 
               <Button 
                 type="submit" 
-                disabled={withdrawing || balance <= 0 || !amount}
+                disabled={withdrawing || balance < 100 || !amount || parseFloat(amount) < 100}
                 className="w-full h-12 rounded-xl bg-gradient-navy text-cream font-semibold hover:opacity-95 shadow-md"
               >
                 {withdrawing ? "Processing..." : "Withdraw Funds"}
@@ -298,4 +298,7 @@ function TailorWallet() {
     </PageShell>
   );
 }
+
+
+
 

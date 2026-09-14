@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+﻿const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const TailorProfile = require('../models/TailorProfile');
 const otpGenerator = require('otp-generator');

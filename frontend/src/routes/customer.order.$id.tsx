@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -325,3 +325,4 @@ function CustomerOrderDetails() {
     </PageShell>
   );
 }
+

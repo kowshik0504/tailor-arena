@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -352,3 +352,4 @@ function DetailItem({ label, value, valueClass = "text-navy" }: { label: string,
     </div>
   );
 }
+
