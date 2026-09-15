@@ -44,6 +44,15 @@ function Notifications() {
     fetchOrders();
   }, []);
 
+  const handleOnlineAction = async (orderId: string, action: 'confirm-online' | 'reject-online') => {
+    try {
+      await api.put(`/bookings//`);
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, onlinePaymentStatus: action === 'confirm-online' ? 'approved' : 'rejected', paymentStatus: action === 'confirm-online' ? 'paid' : o.paymentStatus } : o));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleCashAction = async (orderId: string, action: 'confirm' | 'reject') => {
     try {
       await api.put(`/bookings/${orderId}/${action}-cash`);
@@ -54,7 +63,7 @@ function Notifications() {
   };
 
   const reminders: Reminder[] = orders
-    .filter(o => ["Pending", "New", "Ready for Delivery", "Request Changes", "Changes Requested", "In Stitching"].includes(o.status) || o.cashRequestStatus === 'pending')
+    .filter(o => ["Pending", "New", "Ready for Delivery", "Request Changes", "Changes Requested", "In Stitching"].includes(o.status) || o.cashRequestStatus === 'pending' || o.onlinePaymentStatus === 'pending')
     .map(o => {
       let type: "Delivery" | "Payment" | "Appointment" | "Delayed" = "Appointment";
       let title = "Action needed";
@@ -62,7 +71,12 @@ function Notifications() {
       let tint = "bg-gradient-rose";
       let when = o.due || o.delivery || "Soon";
 
-      if (o.cashRequestStatus === 'pending') {
+      if (o.onlinePaymentStatus === 'pending') {
+        type = "Payment";
+        title = "Online Payment Verification";
+        I = IndianRupee;
+        tint = "bg-gradient-cream text-navy";
+      } else if (o.cashRequestStatus === 'pending') {
         type = "Payment";
         title = "Cash Payment Handover";
         I = HandCoins;
@@ -92,7 +106,7 @@ function Notifications() {
       return {
         type,
         title,
-        detail: o.cashRequestStatus === 'pending' ? `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || 500)} in cash.` : `${o.customer?.name || 'Customer'} · ${o.dressType || o.dress || "Custom Order"}`,
+        detail: o.onlinePaymentStatus === 'pending' ? ${o.customer?.name || 'Customer'} paid ? via . Check your bank. : o.cashRequestStatus === 'pending' ? `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || 500)} in cash.` : `${o.customer?.name || 'Customer'} · ${o.dressType || o.dress || "Custom Order"}`,
         when,
         I,
         tint,
@@ -152,6 +166,8 @@ function Notifications() {
     </PageShell>
   );
 }
+
+
 
 
 

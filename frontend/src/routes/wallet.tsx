@@ -40,15 +40,32 @@ function TailorWallet() {
             id: b._id + '_base',
             bookingId: b._id,
             date: b.createdAt,
-            amount: b.baseAmountPaid || 500,
+            amount: b.baseAmountPaid || Math.min(500, b.amount),
             status: 'completed',
             customer: b.customer?.name || "Customer",
             label: "Advance Payment"
           });
 
-          const remaining = b.amount - (b.baseAmountPaid || 500);
+          const remaining = b.amount - (b.baseAmountPaid || Math.min(500, b.amount));
 
-          // 2. Cash Handover (Remaining)
+          // 2. Online Payment (Remaining)
+          if (['pending', 'approved', 'rejected'].includes(b.onlinePaymentStatus)) {
+            activities.push({
+              type: 'online_payment',
+              id: b._id + '_online',
+              bookingId: b._id,
+              date: b.updatedAt || b.createdAt,
+              amount: remaining,
+              status: b.onlinePaymentStatus,
+              customer: b.customer?.name || "Customer",
+              label: "Final Payment (" + (b.paymentMethod || "Online") + ")",
+              isOnlineRequest: b.onlinePaymentStatus === 'pending',
+              onOnlineApprove: () => handleOnlineAction(b._id, 'confirm-online'),
+              onOnlineReject: () => handleOnlineAction(b._id, 'reject-online')
+            });
+          }
+
+          // 3. Cash Handover (Remaining)
           if (['pending', 'approved', 'rejected'].includes(b.cashRequestStatus)) {
             activities.push({
               type: 'cash_handover',
@@ -298,6 +315,8 @@ function TailorWallet() {
     </PageShell>
   );
 }
+
+
 
 
 

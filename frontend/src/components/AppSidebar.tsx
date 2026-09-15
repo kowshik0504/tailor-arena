@@ -37,6 +37,8 @@ const tailorMenu: Section[] = [
       { title: "Design Catalog", url: "/catalog", icon: Sparkles },
       { title: "Portfolio", url: "/portfolio", icon: ImageIcon },
       { title: "History", url: "/history", icon: History },
+      { title: "Wallet", url: "/wallet", icon: HandCoins },
+      { title: "Reminders", url: "/notifications", icon: Bell },
     ],
   },
   {
@@ -224,6 +226,7 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
 
 
 
