@@ -109,7 +109,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
 
   const signOut = () => {
     logout();
-    navigate({ to: "/login" });
+    navigate({ to: "/login" } as any);
   };
 
   const isHome = pathname === meta.homePath || pathname === meta.homePath + "/";
@@ -231,6 +231,7 @@ export function PageShell({
     </>
   );
 }
+
 
 
 

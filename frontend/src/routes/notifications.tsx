@@ -106,14 +106,17 @@ function Notifications() {
       return {
         type,
         title,
-        detail: o.onlinePaymentStatus === 'pending' ? ${o.customer?.name || 'Customer'} paid ? via . Check your bank. : o.cashRequestStatus === 'pending' ? `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || 500)} in cash.` : `${o.customer?.name || 'Customer'} · ${o.dressType || o.dress || "Custom Order"}`,
+        detail: o.onlinePaymentStatus === 'pending' ? `${o.customer?.name || 'Customer'} paid ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} via ${o.paymentMethod || 'Online'}. Check your bank.` : o.cashRequestStatus === 'pending' ? `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} in cash.` : `${o.customer?.name || 'Customer'} — ${o.dressType || o.dress || "Custom Order"}`,
         when,
         I,
         tint,
         isCashRequest: o.cashRequestStatus === 'pending',
+        isOnlineRequest: o.onlinePaymentStatus === 'pending',
         orderId: o._id,
         onApprove: () => handleCashAction(o._id, 'confirm'),
-        onReject: () => handleCashAction(o._id, 'reject')
+        onReject: () => handleCashAction(o._id, 'reject'),
+        onOnlineApprove: () => handleOnlineAction(o._id, 'confirm-online'),
+        onOnlineReject: () => handleOnlineAction(o._id, 'reject-online')
       };
     });
 
@@ -166,6 +169,9 @@ function Notifications() {
     </PageShell>
   );
 }
+
+
+
 
 
 

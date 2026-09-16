@@ -4,7 +4,7 @@ import {
   CalendarDays, Bell, BarChart3, Settings, LogOut,
   Compass, Heart, ShoppingBag, CircleUser, ShieldCheck, IndianRupee,
   FileCheck, UserCog, Crown, Zap, ClipboardList, RefreshCw, CreditCard,
-  MessageCircle, Image as ImageIcon, History,
+  MessageCircle, Image as ImageIcon, History, HandCoins,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -117,7 +117,7 @@ export function AppSidebar() {
   const meta = roleMeta[role];
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const signOut = () => { logout(); navigate({ to: "/login" }); };
+  const signOut = () => { logout(); navigate({ to: "/login" } as any); };
 
 
   const isActive = (p: string) => {
@@ -226,6 +226,10 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+
+
+
 
 
 

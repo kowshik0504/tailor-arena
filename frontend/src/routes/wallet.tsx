@@ -130,6 +130,15 @@ function TailorWallet() {
     }
   };
 
+  const handleOnlineAction = async (orderId: string, action: 'confirm-online' | 'reject-online') => {
+    try {
+      await api.put(`/bookings//`);
+      fetchProfile();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleCashAction = async (orderId: string, action: 'confirm' | 'reject') => {
     try {
       await api.put(`/bookings/${orderId}/${action}-cash`);
@@ -140,7 +149,7 @@ function TailorWallet() {
   };
 
   const paymentHistory = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const recentActivities = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover')]
+  const recentActivities = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover' || (p.type === 'online_payment' && p.status === 'pending'))]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
@@ -315,6 +324,11 @@ function TailorWallet() {
     </PageShell>
   );
 }
+
+
+
+
+
 
 
 

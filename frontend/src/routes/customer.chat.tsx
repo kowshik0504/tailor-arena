@@ -376,7 +376,7 @@ IMPORTANT: Whenever you answer a customer's specific question, provide details, 
           from: "them",
           text: aiResponseText,
           isAi: true,
-          requiresAction,
+          requiresAction: requiresAction as "escalate_confirm" | "booking_link" | undefined,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
       }
@@ -636,4 +636,5 @@ IMPORTANT: Whenever you answer a customer's specific question, provide details, 
     </PageShell>
   );
 }
+
 
