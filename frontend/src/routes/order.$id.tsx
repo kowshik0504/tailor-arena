@@ -1,4 +1,4 @@
-﻿import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -111,6 +111,20 @@ function OrderDetails() {
       console.error(err);
       alert("Failed to request changes.");
     }
+  };
+
+  const handleCashAction = async (action: 'confirm' | 'reject') => {
+    try {
+      await api.put(`/bookings/${id}/${action}-cash`);
+      setOrder({ ...order, cashRequestStatus: action === 'confirm' ? 'approved' : 'rejected', paymentStatus: action === 'confirm' ? 'paid' : order.paymentStatus });
+    } catch(err) { console.error(err); }
+  };
+
+  const handleOnlineAction = async (action: 'confirm-online' | 'reject-online') => {
+    try {
+      await api.put(`/bookings/${id}/${action}`);
+      setOrder({ ...order, onlinePaymentStatus: action === 'confirm-online' ? 'approved' : 'rejected', paymentStatus: action === 'confirm-online' ? 'paid' : order.paymentStatus });
+    } catch(err) { console.error(err); }
   };
 
   const handleHandover = async () => {
@@ -336,6 +350,26 @@ function OrderDetails() {
                 <DetailItem label="Payment Status" value={order.paymentStatus === 'paid' ? 'Paid' : 'Pending'} valueClass={order.paymentStatus === 'paid' ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'} />
                 <DetailItem label="Payment Method" value={order.paymentMethod ? order.paymentMethod.replace("_", " ").toUpperCase() : "Online"} />
               </div>
+
+              {order.cashRequestStatus === 'pending' && (
+                <div className="mt-6 pt-4 border-t border-gold/20">
+                  <p className="text-sm font-medium text-navy mb-3">Customer handed over cash?</p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => handleCashAction('reject')}><X className="h-4 w-4 mr-2" /> No</Button>
+                    <Button className="flex-1 bg-navy text-cream" onClick={() => handleCashAction('confirm')}><Check className="h-4 w-4 mr-2" /> Received in hand</Button>
+                  </div>
+                </div>
+              )}
+
+              {order.onlinePaymentStatus === 'pending' && (
+                <div className="mt-6 pt-4 border-t border-gold/20">
+                  <p className="text-sm font-medium text-navy mb-3">Customer paid online. Did you receive it in your bank?</p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => handleOnlineAction('reject-online')}><X className="h-4 w-4 mr-2" /> No</Button>
+                    <Button className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleOnlineAction('confirm-online')}><Check className="h-4 w-4 mr-2" /> Received in bank</Button>
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         </div>

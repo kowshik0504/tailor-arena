@@ -478,6 +478,7 @@ exports.requestCashPayment = async (req, res) => {
     if (booking.customer.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
 
     booking.cashRequestStatus = 'pending';
+      booking.paymentMethod = 'cash';
     const updated = await booking.save();
     res.json(updated);
   } catch (error) {
@@ -541,7 +542,7 @@ exports.markHandover = async (req, res) => {
     await booking.save();
 
     if (booking.customer.email) {
-      await sendHandoverEmail(booking.customer.email, booking.customer.name, booking.dressType, booking.tailor.businessName);
+      await require('./authController').sendHandoverEmail(booking);
     }
 
     res.json({ message: 'Handover marked successfully', booking });

@@ -26,5 +26,10 @@ router.put('/:id/reject-cash', protect, roleCheck('tailor'), bookingController.r
 router.put('/:id/handover', protect, roleCheck('tailor'), bookingController.markHandover);
 router.put('/:id/delay-handover', protect, roleCheck('tailor'), bookingController.delayHandover);
 
+router.put('/:id/pay-online', protect, roleCheck('customer'), bookingController.payOnline);
+router.put('/:id/confirm-online', protect, roleCheck('tailor'), bookingController.confirmOnlinePayment);
+router.put('/:id/reject-online', protect, roleCheck('tailor'), bookingController.rejectOnlinePayment);
+
 module.exports = router;
+
 

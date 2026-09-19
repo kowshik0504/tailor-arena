@@ -1,4 +1,5 @@
-﻿const jwt = require('jsonwebtoken');
+const PDFDocument = require('pdfkit');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const TailorProfile = require('../models/TailorProfile');
 const otpGenerator = require('otp-generator');
@@ -272,9 +273,8 @@ exports.sendCompletionEmail = async (email, name, tailorName, dressType, amount 
 
             ${remainingAmount > 0 ? `
             <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px; align-items: center;">
-                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=upi" style="background-color: #0984E3; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Online Now (UPI/Card)</a>
-                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=netbanking" style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay via Netbanking</a>
-                <a href="${frontendUrl}/customer/pay-cash?orderId=${bookingId}" style="background-color: #ffffff; color: #0984E3; border: 2px solid #0984E3; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Cash to Tailor</a>
+                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=wallet" style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Wallet</a>
+                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=online" style="background-color: #0984E3; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Online</a>
             </div>
             ` : ''}
 
@@ -496,28 +496,74 @@ exports.verifyTailorOTP = async (req, res) => {
   }
 };
 
-exports.sendHandoverEmail = async (email, name, dressType, tailorName) => {
+exports.sendHandoverEmail = async (booking) => {
   try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+
+    const email = booking.customer.email;
+    const name = booking.customer.name;
+    const dressType = booking.dressType;
+    const tailorName = booking.tailor.businessName || 'Tailor Arena';
+    
+    // Generate PDF Invoice in memory
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 50 });
+    let buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+    
+    // Write PDF content
+    doc.fontSize(20).text('Tailor Arena - Official Invoice', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Order ID: #${booking._id.toString().slice(-8).toUpperCase()}`);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`);
+    doc.moveDown();
+    
+    doc.fontSize(14).text('Customer Details', { underline: true });
+    doc.fontSize(12).text(`Name: ${name}`);
+    doc.text(`Email: ${email}`);
+    doc.moveDown();
+    
+    doc.fontSize(14).text('Order Details', { underline: true });
+    doc.fontSize(12).text(`Tailor: ${tailorName}`);
+    doc.text(`Dress Type: ${dressType}`);
+    doc.text(`Appointment Slot: ${booking.timeSlot || 'N/A'}`);
+    doc.text(`Handed Over: ${new Date().toLocaleString()}`);
+    doc.moveDown();
+    
+    doc.fontSize(14).text('Payment Breakdown', { underline: true });
+    doc.fontSize(12).text(`Total Amount: INR ${booking.amount}`);
+    doc.text(`Advance Paid: INR ${booking.baseAmountPaid || Math.min(500, booking.amount)} (Mode: Online)`);
+    const remaining = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+    doc.text(`Remaining Paid: INR ${remaining} (Mode: ${booking.paymentMethod ? booking.paymentMethod.toUpperCase() : 'ONLINE'})`);
+    doc.moveDown();
+    doc.fontSize(14).text('Thank you for choosing Tailor Arena!', { align: 'center' });
+    
+    doc.end();
+
+    const pdfBuffer = await new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
     });
 
     await transporter.sendMail({
       from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Your clothes have been handed over! 🛍️',
+      subject: 'Your clothes have been handed over & Invoice!',
       html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <h2 style="color: #2D3436; text-align: center;">Order Completed & Handed Over</h2>
         <p>Hi ${name},</p>
-        <p>Your <strong>${dressType}</strong> has been successfully bought by you from <strong>${tailorName}</strong>.</p>
+        <p>Your <strong>${dressType}</strong> has been successfully handed over by <strong>${tailorName}</strong>.</p>
+        <p>We have attached the official invoice PDF to this email for your records.</p>
         <p>Thank you for choosing Tailor Arena! We hope you love your new outfit.</p>
         <p>Best Regards,<br>Tailor Arena Team</p>
-      </div>`
+      </div>`,
+      attachments: [{
+        filename: `Invoice_${booking._id.toString().slice(-8).toUpperCase()}.pdf`,
+        content: pdfBuffer
+      }]
     });
   } catch (error) {
     console.error('Error sending handover email:', error);

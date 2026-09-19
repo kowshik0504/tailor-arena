@@ -26,13 +26,21 @@ function DummyPayment() {
   const amount = search.amount || "0";
   const method = search.method || "upi";
 
-  const handlePay = () => {
+  const handlePay = async () => {
     setLoading(true);
-    // Simulate payment processing delay
-    setTimeout(() => {
+    try {
+      if (search.orderId) {
+        await api.put(`/bookings/${search.orderId}/pay-online`, { method });
+      }
+      setTimeout(() => {
+        setLoading(false);
+        setSuccess(true);
+      }, 500);
+    } catch (error) {
+      console.error(error);
       setLoading(false);
-      setSuccess(true);
-    }, 1500);
+      alert("Payment failed. Please try again.");
+    }
   };
 
   return (

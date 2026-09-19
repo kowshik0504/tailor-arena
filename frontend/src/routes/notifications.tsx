@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,8 @@ type Reminder = {
   orderId?: string;
   onApprove?: () => void;
   onReject?: () => void;
+  onOnlineApprove?: () => void;
+  onOnlineReject?: () => void;
 };
 
 const filters = ["All", "Delivery", "Payment", "Appointment", "Delayed"];
@@ -46,7 +48,7 @@ function Notifications() {
 
   const handleOnlineAction = async (orderId: string, action: 'confirm-online' | 'reject-online') => {
     try {
-      await api.put(`/bookings//`);
+      await api.put(`/bookings/${orderId}/${action}`);
       setOrders(prev => prev.map(o => o._id === orderId ? { ...o, onlinePaymentStatus: action === 'confirm-online' ? 'approved' : 'rejected', paymentStatus: action === 'confirm-online' ? 'paid' : o.paymentStatus } : o));
     } catch (err) {
       console.error(err);
@@ -106,7 +108,7 @@ function Notifications() {
       return {
         type,
         title,
-        detail: o.onlinePaymentStatus === 'pending' ? `${o.customer?.name || 'Customer'} paid ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} via ${o.paymentMethod || 'Online'}. Check your bank.` : o.cashRequestStatus === 'pending' ? `${o.customer?.name || 'Customer'} wants to pay ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} in cash.` : `${o.customer?.name || 'Customer'} — ${o.dressType || o.dress || "Custom Order"}`,
+        detail: o.onlinePaymentStatus === 'pending' ? `Remaining amount of ?${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} received in ${o.paymentMethod || 'upi'}` : o.cashRequestStatus === 'pending' ? `Remaining amount of ?${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} must be pay in cash` : `${o.customer?.name || 'Customer'} - ${o.dressType || o.dress || 'Custom Order'}`,
         when,
         I,
         tint,
@@ -137,30 +139,43 @@ function Notifications() {
           </div>
         ) : reminders.map((r, i) => (
           <Card key={i} className="p-5 border-gold/60 shadow-luxe hover:shadow-glow transition group">
-            <div className="flex items-start justify-between">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-luxe ${r.tint}`}>
-                <r.I className="h-4 w-4" />
+            <Link to="/order/$id" params={{ id: r.orderId! }} className="block cursor-pointer">
+              <div className="flex items-start justify-between">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-luxe ${r.tint}`}>
+                  <r.I className="h-4 w-4" />
+                </div>
+                <Badge variant="outline" className="rounded-full text-[10px] border-gold/70">{r.type}</Badge>
               </div>
-              <Badge variant="outline" className="rounded-full text-[10px] border-gold/70">{r.type}</Badge>
-            </div>
-            <p className="font-display text-lg mt-4">{r.title}</p>
-            <p className="text-xs text-muted-foreground mt-1">{r.detail}</p>
+              <p className="font-display text-lg mt-4">{r.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">{r.detail}</p>
+            </Link>
             
-            {r.isCashRequest ? (
+            {r.isOnlineRequest ? (
               <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between gap-2">
-                <Button size="sm" variant="outline" className="rounded-full h-8 flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={r.onReject}>
+                <Button size="sm" variant="outline" className="rounded-full h-8 flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => { e.preventDefault(); r.onOnlineReject?.(); }}>
+                  <X className="h-3 w-3 mr-1" /> Not
+                </Button>
+                <Button size="sm" className="rounded-full h-8 flex-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700" onClick={(e) => { e.preventDefault(); r.onOnlineApprove?.(); }}>
+                  <Check className="h-3 w-3 mr-1" /> Checked in bank
+                </Button>
+              </div>
+            ) : r.isCashRequest ? (
+              <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" className="rounded-full h-8 flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => { e.preventDefault(); r.onReject?.(); }}>
                   <X className="h-3 w-3 mr-1" /> No
                 </Button>
-                <Button size="sm" className="rounded-full h-8 flex-1 text-xs bg-navy text-cream" onClick={r.onApprove}>
+                <Button size="sm" className="rounded-full h-8 flex-1 text-xs bg-navy text-cream" onClick={(e) => { e.preventDefault(); r.onApprove?.(); }}>
                   <Check className="h-3 w-3 mr-1" /> Received in hand
                 </Button>
               </div>
             ) : (
               <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between">
                 <span className="text-[11px] text-mocha">{r.when}</span>
-                <Button size="sm" variant="ghost" className="rounded-full h-7 text-xs gap-1 opacity-60 group-hover:opacity-100">
-                  <Check className="h-3 w-3" /> Done
-                </Button>
+                <Link to="/order/$id" params={{ id: r.orderId! }}>
+                  <Button size="sm" variant="ghost" className="rounded-full h-7 text-xs gap-1 opacity-60 group-hover:opacity-100">
+                    <Check className="h-3 w-3" /> View Order
+                  </Button>
+                </Link>
               </div>
             )}
           </Card>

@@ -149,7 +149,7 @@ function TailorWallet() {
   };
 
   const paymentHistory = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const recentActivities = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover' || (p.type === 'online_payment' && p.status === 'pending'))]
+  const recentActivities = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover' || p.type === 'online_payment')]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (

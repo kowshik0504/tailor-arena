@@ -1,4 +1,4 @@
-﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   CalendarDays, Clock, AlertCircle, RefreshCw, User, Scissors,
-  CreditCard, FileText, Image, Tag, ArrowLeft, Loader2
+  CreditCard, FileText, Image, Tag, ArrowLeft, Loader2, Printer, Check
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -189,42 +189,61 @@ function CustomerOrderDetails() {
           </div>
         </Card>
 
+        
         {/* Payment details */}
-        <Card className="p-6 border-gold/60 shadow-luxe">
-          <h3 className="font-display text-lg text-navy mb-5">Payment</h3>
-          <div className="grid sm:grid-cols-2 gap-6">
+        <Card className="p-6 border-gold/60 shadow-luxe print:shadow-none print:border-0 print:p-0">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-display text-lg text-navy flex items-center gap-2"><CreditCard className="h-5 w-5 text-emerald-600 print:hidden" /> Payment Breakdown</h3>
+            <Button size="sm" variant="outline" className="text-xs h-7 rounded-full print:hidden" onClick={() => window.print()}>
+              <Printer className="h-3 w-3 mr-1" /> Print / Download
+            </Button>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6 print:grid-cols-2">
             <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0 print:hidden">
                 <CreditCard className="h-4 w-4 text-navy" />
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Amount</p>
-                <p className="font-display text-2xl text-navy">₹{booking.amount || 0}</p>
+                <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Total Amount</p>
+                <p className="font-display text-xl text-navy">?{booking.amount || 0}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0">
-                <CreditCard className="h-4 w-4 text-navy" />
+              <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0 print:hidden">
+                <CreditCard className="h-4 w-4 text-emerald-600" />
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Payment Status</p>
+                <p className="text-[11px] uppercase tracking-wider text-emerald-600 mb-1">Advance Paid</p>
+                <p className="font-display text-xl text-emerald-600">?{booking.baseAmountPaid || Math.min(500, booking.amount)}</p>
+                <p className="text-xs text-mocha">Online</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3 border-t border-gold/20 pt-4">
+              <div className="h-9 w-9 rounded-lg bg-rose-50 flex items-center justify-center shrink-0 print:hidden">
+                <CreditCard className="h-4 w-4 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-rose-600 mb-1">Remaining Balance</p>
+                <p className="font-display text-xl text-rose-600">?{booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount))}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 border-t border-gold/20 pt-4">
+              <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0 print:hidden">
+                <Check className="h-4 w-4 text-navy" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Remaining Status</p>
                 <Badge className={`rounded-full ${booking.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
                   {(booking.paymentStatus || "pending").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                 </Badge>
+                {booking.paymentStatus === 'paid' && booking.paymentMethod && (
+                  <p className="text-xs text-mocha mt-1">Paid via {booking.paymentMethod.toUpperCase()}</p>
+                )}
               </div>
             </div>
-            {booking.paymentMethod && (
-              <div className="flex items-start gap-3">
-                <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0">
-                  <CreditCard className="h-4 w-4 text-navy" />
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Payment Method</p>
-                  <p className="font-medium text-navy capitalize">{booking.paymentMethod}</p>
-                </div>
-              </div>
-            )}
           </div>
+
         </Card>
 
         {/* Design image */}

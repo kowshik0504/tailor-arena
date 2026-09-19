@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,29 +55,26 @@ function MyBookings() {
   const [tab, setTab] = useState<Tab>("Upcoming");
   
   // Load new bookings from local storage
-  const [allBookings, setAllBookings] = useState<Booking[]>(() => {
-    try {
-      const saved = localStorage.getItem("new_bookings");
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
-  });
+
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleStorage = () => {
-      try {
-        const saved = localStorage.getItem("new_bookings");
-        if (saved) {
-          setAllBookings(JSON.parse(saved));
-        }
-      } catch (e) {}
-    };
-    handleStorage(); // Run on mount
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    api.get('/bookings/customer').then(res => {
+      if (res.data) {
+        setAllBookings(res.data.map((b: any) => ({
+          id: b._id,
+          tailor: b.tailor?.businessName || b.tailor?.user?.name || "Tailor",
+          service: b.workType || "Stitching",
+          garment: b.dressType || "Custom",
+          bookedOn: new Date(b.createdAt).toLocaleDateString(),
+          delivery: b.deliveryDate || "TBD",
+          status: b.status === "handed_over" ? "Completed" : b.status === "New" ? "Pending Approval" : b.status,
+        })));
+      }
+    }).catch(console.error).finally(() => setLoading(false));
   }, []);
+
 
   const filtered = allBookings.filter((b) => filterFor[tab](b.status));
 
