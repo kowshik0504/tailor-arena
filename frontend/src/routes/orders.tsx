@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Plus, Clock, MoreHorizontal, Send, Image as ImageIcon, User, Ruler, Sparkles,
+  Plus, Clock, MoreHorizontal, Send, Image as ImageIcon, User, Ruler, Sparkles, Filter
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -60,6 +60,22 @@ function Orders() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMode, setFilterMode] = useState<"All" | "VIP" | "Bridal" | "Menswear">("All");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [advFilters, setAdvFilters] = useState<{
+    category: string[];
+    occasion: string[];
+    priority: string[];
+  }>({ category: [], occasion: [], priority: [] });
+
+  const toggleFilter = (type: "category" | "occasion" | "priority", val: string) => {
+    setAdvFilters(prev => {
+      const arr = prev[type];
+      return {
+        ...prev,
+        [type]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
+      };
+    });
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -172,14 +188,25 @@ function Orders() {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, chat: [...o.chat, msg] } : o)));
 
   return (
-    <PageShell title="Orders" subtitle="A simple flow from request to delivery.">
+    <PageShell title="Orders" subtitle="A simple flow from request to delivery." searchQuery={searchTerm} onSearchChange={setSearchTerm} searchPlaceholder="Search orders, customers, IDs...">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
-          {["All", "VIP", "Bridal", "Menswear"].map((t, i) => (
-            <Badge key={t} variant={i === 0 ? "default" : "outline"} className="rounded-full px-4 py-1.5 cursor-pointer">
+          {(["All", "VIP", "Bridal", "Menswear"] as const).map((t) => (
+            <Badge 
+              key={t} 
+              variant={filterMode === t ? "default" : "outline"} 
+              className="rounded-full px-4 py-1.5 cursor-pointer transition-colors"
+              onClick={() => setFilterMode(t)}
+            >
               {t}
             </Badge>
           ))}
+          <Button variant="outline" onClick={() => setFilterSheetOpen(true)} className="rounded-full border-gold/60 text-navy hover:bg-gold/10 gap-2">
+            <Filter className="h-4 w-4" /> Filters
+            {(advFilters.category.length > 0 || advFilters.occasion.length > 0 || advFilters.priority.length > 0) && (
+              <span className="w-2 h-2 rounded-full bg-terracotta ml-1" />
+            )}
+          </Button>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="rounded-full bg-foreground text-background hover:bg-foreground/90 gap-2">
           <Plus className="h-4 w-4" /> New Order
@@ -191,6 +218,47 @@ function Orders() {
           const priorityWeight: Record<string, number> = { VIP: 3, High: 2, Normal: 1 };
           const items = orders
             .filter((o) => o.status === col.id)
+            .filter((o) => {
+              if (filterMode === "All") return true;
+              if (filterMode === "VIP") return o.priority === "VIP";
+              const g = o.garment.toLowerCase();
+              const d = (o.design || "").toLowerCase();
+              if (filterMode === "Bridal") return g.includes("bridal") || g.includes("wedding") || g.includes("lehenga") || d.includes("bridal");
+              if (filterMode === "Menswear") return g.includes("mens") || g.includes("suit") || g.includes("kurta") || d.includes("mens") || g.includes("sherwani") || g.includes("shirt");
+              return true;
+            })
+            .filter((o) => {
+              if (advFilters.priority.length > 0 && !advFilters.priority.includes(o.priority)) return false;
+              
+              const g = o.garment.toLowerCase();
+              const d = (o.design || "").toLowerCase();
+              
+              if (advFilters.category.length > 0) {
+                let match = false;
+                if (advFilters.category.includes("Women") && (g.includes("blouse") || g.includes("lehenga") || g.includes("dress") || g.includes("saree") || g.includes("women") || g.includes("gown") || g.includes("skirt"))) match = true;
+                if (advFilters.category.includes("Men") && (g.includes("shirt") || g.includes("trouser") || g.includes("suit") || g.includes("mens") || g.includes("kurta") || g.includes("sherwani"))) match = true;
+                if (advFilters.category.includes("Kids") && (g.includes("kid") || g.includes("child") || g.includes("girl") || g.includes("boy"))) match = true;
+                if (!match) return false;
+              }
+              
+              if (advFilters.occasion.length > 0) {
+                let match = false;
+                if (advFilters.occasion.includes("Wedding") && (g.includes("bridal") || g.includes("wedding") || g.includes("lehenga") || d.includes("bridal") || g.includes("sherwani"))) match = true;
+                if (advFilters.occasion.includes("Party") && (g.includes("party") || g.includes("gown") || g.includes("dress"))) match = true;
+                if (advFilters.occasion.includes("Formal") && (g.includes("suit") || g.includes("shirt") || g.includes("trouser") || g.includes("formal"))) match = true;
+                if (advFilters.occasion.includes("Casual") && (g.includes("casual") || g.includes("top") || g.includes("kurti"))) match = true;
+                if (!match) return false;
+              }
+              return true;
+            })
+            .filter((o) => {
+              if (!searchTerm) return true;
+              const q = searchTerm.toLowerCase();
+              return o.customer.toLowerCase().includes(q) || 
+                     (o.orderId || o.id).toLowerCase().includes(q) || 
+                     o.garment.toLowerCase().includes(q) ||
+                     (o.design || "").toLowerCase().includes(q);
+            })
             .sort((a, b) => (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0));
           return (
             <div
@@ -300,6 +368,78 @@ function Orders() {
               onStatus={(s) => moveTo(active.id, s)}
             />
           )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+        <SheetContent className="overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="font-display text-2xl text-navy">Advanced Filters</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-6">
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-mocha mb-3 block">Category</label>
+              <div className="flex flex-wrap gap-2">
+                {["Women", "Men", "Kids"].map(c => {
+                  const active = advFilters.category.includes(c);
+                  return (
+                    <button key={c} onClick={() => toggleFilter("category", c)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${active ? 'bg-gradient-navy text-cream border-navy' : 'bg-white text-navy border-border hover:border-gold/40'}`}>
+                      {c}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-mocha mb-3 block">Occasion</label>
+              <div className="flex flex-wrap gap-2">
+                {["Wedding", "Party", "Casual", "Formal"].map(c => {
+                  const active = advFilters.occasion.includes(c);
+                  return (
+                    <button key={c} onClick={() => toggleFilter("occasion", c)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${active ? 'bg-gradient-navy text-cream border-navy' : 'bg-white text-navy border-border hover:border-gold/40'}`}>
+                      {c}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-mocha mb-3 block">Order Priority</label>
+              <div className="flex flex-col gap-3">
+                {[
+                  { id: "Normal", name: "Normal", desc: "Standard processing speed" },
+                  { id: "High", name: "High", desc: "Moderate priority processing" },
+                  { id: "VIP", name: "VIP", desc: "Fastest completion & VIP service" }
+                ].map((p) => {
+                  const active = advFilters.priority.includes(p.id);
+                  return (
+                    <div 
+                      key={p.id}
+                      onClick={() => toggleFilter("priority", p.id)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${active ? 'border-gold bg-gold/5 shadow-glow' : 'border-border bg-white hover:border-gold/40'}`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-navy text-sm">{p.name}</span>
+                          {p.id === 'VIP' && <span className="bg-gradient-gold text-navy-deep px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">Recommended</span>}
+                        </div>
+                        <p className="text-xs text-mocha mt-1">{p.desc}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${active ? 'border-gold bg-gold' : 'border-muted-foreground'}`}>
+                          {active && <div className="h-2 w-2 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            <Button variant="outline" className="w-full rounded-full border-terracotta text-terracotta hover:bg-terracotta/10" onClick={() => setAdvFilters({ category: [], occasion: [], priority: [] })}>
+              Clear Filters
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     </PageShell>

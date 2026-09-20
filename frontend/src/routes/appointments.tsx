@@ -23,12 +23,7 @@ type Appt = {
   tint: string;
 };
 
-const workQueue = [
-  { label: "Pending Measurements", count: 0, icon: Ruler, tint: "bg-gradient-rose" },
-  { label: "Under Stitching", count: 0, icon: Scissors, tint: "bg-gradient-gold" },
-  { label: "Upcoming Deliveries", count: 0, icon: PackageCheck, tint: "bg-gradient-cream" },
-  { label: "Consultations", count: 0, icon: Sparkles, tint: "bg-gradient-luxe text-primary-foreground" },
-];
+// Moved workQueue into component state
 
 function Appointments() {
   const now = new Date();
@@ -38,13 +33,24 @@ function Appointments() {
   
   const [displayMonth, setDisplayMonth] = useState(currentMonth);
   const [displayYear, setDisplayYear] = useState(currentYear);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
-  const [todayAppts, setTodayAppts] = useState<Appt[]>([]);
+  const [allAppts, setAllAppts] = useState<any[]>([]);
+  const [selectedAppts, setSelectedAppts] = useState<Appt[]>([]);
   const [tomorrow, setTomorrow] = useState<Appt[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
   const [busyDays, setBusyDays] = useState<number[]>([]);
-  const [trialDays] = useState<number[]>([]);
-  const [deliveryDays] = useState<number[]>([]);
+  const [trialDays, setTrialDays] = useState<number[]>([]);
+  const [deliveryDays, setDeliveryDays] = useState<number[]>([]);
   const [leaveDays] = useState<number[]>([]);
+
+  const [stats, setStats] = useState({
+    pendingMeasurements: 0,
+    underStitching: 0,
+    upcomingDeliveries: 0,
+    consultations: 0
+  });
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -82,27 +88,94 @@ function Appointments() {
             status: b.status === "confirmed" ? "Confirmed" : b.status === "pending" ? "Pending" : "Completed",
             icon,
             tint
-          };
+          } as Appt;
         };
 
-        setTodayAppts(allBookings.filter((b: any) => b.date && formatLocalISODate(new Date(b.date)) === todayStr).map(mapBooking));
+        setAllAppts(allBookings);
+
         setTomorrow(allBookings.filter((b: any) => b.date && formatLocalISODate(new Date(b.date)) === tomStr).map(mapBooking));
 
-        // Mark busy days based on the currently displayed month
-        const currentMonthBookings = allBookings.filter((b: any) => {
-          if (!b.date) return false;
-          const bd = new Date(b.date);
-          return bd.getMonth() === displayMonth && bd.getFullYear() === displayYear;
+        // Stats calculation
+        let pending = 0;
+        let stitching = 0;
+        let deliveries = 0;
+        let consultations = 0;
+
+        allBookings.forEach((b: any) => {
+          if (!b.measurements || b.measurements.length === 0) pending++;
+          if (b.status === 'in-progress') stitching++;
+          if (b.status === 'completed') deliveries++;
+          if (b.dressType?.toLowerCase().includes('consultation')) consultations++;
         });
         
-        const busy = currentMonthBookings.map((b: any) => new Date(b.date).getDate());
-        setBusyDays([...new Set(busy)] as number[]);
+        setStats({
+          pendingMeasurements: pending,
+          underStitching: stitching,
+          upcomingDeliveries: deliveries,
+          consultations
+        });
+
       } catch (err) {
         console.error(err);
       }
     };
     fetchBookings();
-  }, [displayMonth, displayYear]);
+  }, []);
+
+  useEffect(() => {
+    // Update selected appointments whenever selectedDate or allAppts changes
+    const formatLocalISODate = (d: Date) => {
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    };
+    
+    const selStr = formatLocalISODate(selectedDate);
+    const mapped = allAppts.filter((b: any) => b.date && formatLocalISODate(new Date(b.date)) === selStr).map(b => {
+      let icon = Ruler;
+      let tint = "bg-gradient-cream";
+      if (b.workType === 'alteration') {
+          icon = Scissors;
+          tint = "bg-gradient-gold";
+      } else if (b.dressType?.toLowerCase().includes('consultation')) {
+          icon = Sparkles;
+          tint = "bg-gradient-luxe text-primary-foreground";
+      } else {
+          icon = PackageCheck;
+          tint = "bg-gradient-rose";
+      }
+      return {
+        time: b.timeSlot,
+        customer: b.customer?.name || "Customer",
+        service: b.dressType,
+        garment: b.workType,
+        status: b.status === "confirmed" ? "Confirmed" : b.status === "pending" ? "Pending" : "Completed",
+        icon,
+        tint
+      } as Appt;
+    }).filter(a => {
+      if (!searchTerm) return true;
+      const q = searchTerm.toLowerCase();
+      return a.customer.toLowerCase().includes(q) || (a.service || "").toLowerCase().includes(q) || (a.garment || "").toLowerCase().includes(q);
+    });
+    setSelectedAppts(mapped);
+  }, [selectedDate, allAppts, searchTerm]);
+
+  useEffect(() => {
+    // Mark busy days based on the currently displayed month
+    const currentMonthBookings = allAppts.filter((b: any) => {
+      if (!b.date) return false;
+      const bd = new Date(b.date);
+      return bd.getMonth() === displayMonth && bd.getFullYear() === displayYear;
+    });
+    
+    const busy = currentMonthBookings.map((b: any) => new Date(b.date).getDate());
+    setBusyDays([...new Set(busy)] as number[]);
+    
+    // For trial and delivery days, you can define logic if needed based on status
+    const trials = currentMonthBookings.filter((b: any) => b.status === 'in-progress').map((b: any) => new Date(b.date).getDate());
+    const deliveries = currentMonthBookings.filter((b: any) => b.status === 'completed').map((b: any) => new Date(b.date).getDate());
+    setTrialDays([...new Set(trials)] as number[]);
+    setDeliveryDays([...new Set(deliveries)] as number[]);
+  }, [displayMonth, displayYear, allAppts]);
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -136,14 +209,19 @@ function Appointments() {
   const calendarCells = Array.from({ length: totalCells }, (_, i) => i - firstDay + 1);
 
   return (
-    <PageShell title="Schedule" subtitle="Your atelier diary — appointments, fittings, and daily work queue.">
+    <PageShell title="Schedule" subtitle="Your atelier diary — appointments, fittings, and daily work queue." searchQuery={searchTerm} onSearchChange={setSearchTerm} searchPlaceholder="Search customer, service...">
       {/* Daily Work Queue */}
       <div className="grid md:grid-cols-4 gap-4">
-        {workQueue.map((c) => (
+        {[
+          { label: "Pending Measurements", count: stats.pendingMeasurements, icon: Ruler, tint: "bg-gradient-rose" },
+          { label: "Under Stitching", count: stats.underStitching, icon: Scissors, tint: "bg-gradient-gold" },
+          { label: "Upcoming Deliveries", count: stats.upcomingDeliveries, icon: PackageCheck, tint: "bg-gradient-cream" },
+          { label: "Consultations", count: stats.consultations, icon: Sparkles, tint: "bg-gradient-luxe text-primary-foreground" },
+        ].map((c) => (
           <Card key={c.label} className={`p-5 border-0 shadow-luxe ${c.tint}`}>
             <div className="flex items-center justify-between">
               <c.icon className="h-5 w-5 opacity-80" />
-              <Badge variant="outline" className="rounded-full text-[9px] bg-background/40 border-0">Today</Badge>
+              <Badge variant="outline" className="rounded-full text-[9px] bg-background/40 border-0">Total</Badge>
             </div>
             <p className="font-display text-3xl mt-3">{c.count}</p>
             <p className="text-xs mt-1 opacity-80">{c.label}</p>
@@ -177,19 +255,22 @@ function Appointments() {
               const trial = trialDays.includes(d);
               const delivery = deliveryDays.includes(d);
               const leave = leaveDays.includes(d);
+              const isSelected = selectedDate.getDate() === d && selectedDate.getMonth() === displayMonth && selectedDate.getFullYear() === displayYear;
               return (
                 <div
                   key={i}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center text-sm relative transition
-                    ${isToday ? "bg-gradient-luxe text-primary-foreground shadow-luxe" :
+                  onClick={() => inMonth && setSelectedDate(new Date(displayYear, displayMonth, d))}
+                  className={`aspect-square rounded-xl flex flex-col items-center justify-center text-sm relative transition ${inMonth ? 'cursor-pointer' : ''}
+                    ${isSelected ? "bg-gradient-luxe text-primary-foreground shadow-luxe ring-2 ring-offset-1 ring-gold" :
+                      isToday ? "bg-secondary text-navy" :
                       leave ? "bg-terracotta/15 text-terracotta" :
                       busy ? "bg-champagne/70 text-navy" :
                       inMonth ? "hover:bg-secondary/60 text-navy" : "text-muted-foreground/40"}`}
                 >
                   {inMonth ? d : ""}
                   <div className="flex gap-0.5 mt-0.5">
-                    {trial && <span className="h-1 w-1 rounded-full bg-gold" />}
-                    {delivery && <span className="h-1 w-1 rounded-full bg-terracotta" />}
+                    {trial && <span className={`h-1 w-1 rounded-full ${isSelected ? 'bg-cream' : 'bg-gold'}`} />}
+                    {delivery && <span className={`h-1 w-1 rounded-full ${isSelected ? 'bg-cream' : 'bg-terracotta'}`} />}
                   </div>
                 </div>
               );
@@ -203,24 +284,26 @@ function Appointments() {
           </div>
         </Card>
 
-        {/* Today's appointments */}
+        {/* Appointments for selected date */}
         <Card className="p-6 border-gold/60 shadow-luxe bg-gradient-soft">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-navy">Today's appointments</h3>
-              <p className="text-xs text-muted-foreground">{dayNames[now.getDay()]}, {todayDate} {monthNames[currentMonth]} · Studio A</p>
+              <h3 className="font-display text-lg text-navy">
+                {selectedDate.toDateString() === now.toDateString() ? "Today's appointments" : "Appointments"}
+              </h3>
+              <p className="text-xs text-muted-foreground">{dayNames[selectedDate.getDay()]}, {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}</p>
             </div>
-            <Badge className="rounded-full bg-gradient-gold text-navy-deep">{todayAppts.length}</Badge>
+            <Badge className="rounded-full bg-gradient-gold text-navy-deep">{selectedAppts.length}</Badge>
           </div>
           <div className="mt-5 space-y-2 max-h-[420px] overflow-auto pr-2">
-            {todayAppts.length === 0 ? (
+            {selectedAppts.length === 0 ? (
               <div className="h-32 rounded-2xl bg-white/50 border border-gold/20 flex flex-col items-center justify-center text-mocha/60">
                 <Coffee className="h-6 w-6 mb-2 opacity-50" />
-                <p className="text-sm">No appointments scheduled for today</p>
+                <p className="text-sm">No appointments scheduled</p>
               </div>
             ) : (
-              todayAppts.map((a) => (
-                <div key={a.time} className="flex items-stretch gap-3">
+              selectedAppts.map((a, idx) => (
+                <div key={idx} className="flex items-stretch gap-3">
                   <div className="w-14 flex flex-col items-center justify-center text-xs">
                     <span className="font-display text-base text-navy">{a.time}</span>
                   </div>

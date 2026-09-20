@@ -167,7 +167,7 @@ function CustomerDashboard() {
             {recentOrders.map((o) => (
               <div key={o.id} className="flex items-center gap-4 p-3 rounded-2xl bg-gradient-soft border border-gold/60 hover:border-gold/40 transition">
                 <div className="h-10 w-10 rounded-xl bg-gradient-navy text-cream flex items-center justify-center font-display text-[10px] px-1 text-center">
-                  {o.orderId ? o.orderId.replace('TA-', '') : o.id.slice(-3).toUpperCase()}
+                  {(o as any).orderId ? (o as any).orderId.replace('TA-', '') : o.id.slice(-3).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-navy">{o.item}</p>

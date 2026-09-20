@@ -98,16 +98,17 @@ function AvailabilityPage() {
   let readyForDelivery = 0;
 
   orders.forEach(o => {
-    if (o.rawDate) {
-      const d = new Date(o.rawDate);
-      if (d >= startOfWeek) {
+    if (o.date) {
+      const d = new Date(o.date);
+      // If the booking date is this week and it's not cancelled
+      if (d >= startOfWeek && o.status !== 'cancelled' && o.status !== 'handed_over') {
         slotsFilled++;
+        
+        if (o.status === "pending") pendingApproval++;
+        else if (o.status === "in-progress") inStitching++;
+        else if (o.status === "completed") readyForDelivery++;
       }
     }
-    
-    if (o.status === "Pending" || o.status === "pending") pendingApproval++;
-    else if (o.status === "In Progress" || o.status === "in-progress") inStitching++;
-    else if (o.status === "Ready" || o.status === "ready") readyForDelivery++;
   });
 
   return (

@@ -22,6 +22,9 @@ const stages: Status[] = [
 
 type Booking = {
   id: string; tailor: string; service: string; garment: string;
+  paymentStatus?: string;
+  orderId?: string;
+  appointmentDate?: string;
   bookedOn: string; delivery: string; status: Status;
 };
 

@@ -24,7 +24,7 @@ const formatTime = (time: number) => {
   return new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-export function TopBar({ title, subtitle }: { title: string; subtitle?: string }) {
+export function TopBar({ title, subtitle, searchQuery, onSearchChange, searchPlaceholder }: { title: string; subtitle?: string; searchQuery?: string; onSearchChange?: (v: string) => void; searchPlaceholder?: string; }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const role = roleFromPath(pathname);
   const meta = roleMeta[role];
@@ -102,7 +102,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
             
             if (o.cashRequestStatus === 'pending' && o.paymentMethod === 'cash') {
               newNotifs.push({
-                id: `${o._id}_cash_${updateTime}`,
+                id: `${o._id}_cash_pending`,
                 title: "Cash Payment Verification",
                 message: `${o.customer?.name || 'Customer'} requested to pay ₹${o.amount - (o.baseAmountPaid || 500)} via CASH. Verify for TA-${o._id.slice(-6).toUpperCase()}.`,
                 time: formatTime(updateTime),
@@ -111,7 +111,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
               });
             } else if (o.onlinePaymentStatus === 'pending') {
               newNotifs.push({
-                id: `${o._id}_online_${updateTime}`,
+                id: `${o._id}_online_pending`,
                 title: "Online Payment Verification",
                 message: `${o.customer?.name || 'Customer'} paid ₹${o.amount - (o.baseAmountPaid || 500)} via ${(o.paymentMethod || 'online').toUpperCase()}. Verify for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}.`,
                 time: formatTime(updateTime),
@@ -121,7 +121,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
             } else if (o.cashRequestStatus === 'pending') {
               const isDeliveryToday = o.deliveryDate ? new Date(o.deliveryDate).toDateString() === new Date().toDateString() : false;
               newNotifs.push({
-                id: `${o._id}_cash_${updateTime}`,
+                id: `${o._id}_cash_pending`,
                 title: isDeliveryToday ? "🚨 Handover Day: Cash Collection" : "Cash Handover Pending",
                 message: isDeliveryToday 
                   ? `TODAY IS HANDOVER DAY: You must receive ₹${o.amount - (o.baseAmountPaid || 500)} cash from ${o.customer?.name || 'Customer'} for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}. Please confirm when you receive it!`
@@ -133,7 +133,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
             }
             if (o.status === "Pending" || o.status === "New") {
               newNotifs.push({
-                id: `${o._id}_new_${updateTime}`,
+                id: `${o._id}_new`,
                 title: "New Booking Request",
                 message: `${o.customer?.name || 'Customer'} requested a new booking.`,
                 time: formatTime(updateTime),
@@ -171,7 +171,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
             .map((o: any) => {
               const updateTime = new Date(o.updatedAt || o.createdAt).getTime();
               return {
-                id: `${o._id}_cash_update_${o.cashRequestStatus}_${updateTime}`,
+                id: `${o._id}_cash_update_${o.cashRequestStatus}`,
                 title: o.cashRequestStatus === 'approved' ? "Payment Received" : "Payment Declined",
                 message: o.cashRequestStatus === 'approved' 
                   ? `${o.tailor?.user?.name || 'Your tailor'} confirmed receiving your cash payment of ₹${o.amount - (o.baseAmountPaid || 500)}.`
@@ -270,13 +270,17 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
           </div>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <div className="relative hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search…"
-              className="pl-9 w-64 bg-background/60 border-border/60 rounded-full h-9"
-            />
-          </div>
+          {onSearchChange && (
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder || "Search…"}
+                className="pl-9 w-64 bg-background/60 border-border/60 rounded-full h-9"
+              />
+            </div>
+          )}
 
           <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-gold/40 bg-gold/10 text-navy text-[10px] uppercase tracking-[0.22em]">
             <Crown className="h-3 w-3 text-gold" />
@@ -353,11 +357,11 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
 }
 
 export function PageShell({
-  title, subtitle, children,
-}: { title: string; subtitle?: string; children: React.ReactNode }) {
+  title, subtitle, children, searchQuery, onSearchChange, searchPlaceholder
+}: { title: string; subtitle?: string; children: React.ReactNode; searchQuery?: string; onSearchChange?: (v: string) => void; searchPlaceholder?: string; }) {
   return (
     <>
-      <TopBar title={title} subtitle={subtitle} />
+      <TopBar title={title} subtitle={subtitle} searchQuery={searchQuery} onSearchChange={onSearchChange} searchPlaceholder={searchPlaceholder} />
       <div className="p-6 lg:p-8 space-y-6 animate-in fade-in duration-500">{children}</div>
     </>
   );

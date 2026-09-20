@@ -164,7 +164,7 @@ function Catalog() {
   };
 
   return (
-    <PageShell title="Design Catalog" subtitle="Your portfolio · upload, manage, and convert designs into bookings.">
+    <PageShell title="Design Catalog" subtitle="Your portfolio · upload, manage, and convert designs into bookings." searchQuery={search} onSearchChange={setSearch} searchPlaceholder="Search designs...">
       {/* Header actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -187,11 +187,7 @@ function Catalog() {
         {/* DESIGNS */}
         <TabsContent value="designs" className="space-y-5">
           <Card className="p-4 border-gold/60 shadow-luxe space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search designs…" className="pl-9 rounded-full bg-white/60 border-gold/60" />
-              </div>
+            <div className="flex flex-wrap items-center justify-end gap-3">
               <Select value={sort} onValueChange={setSort}>
                 <SelectTrigger className="w-44 rounded-full bg-white/60 border-gold/60"><Filter className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
                 <SelectContent>
