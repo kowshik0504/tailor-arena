@@ -170,7 +170,7 @@ function OrderDetails() {
   const showHandoverAction = (order.status === 'completed' || order.status === 'delayed') && isFullyPaid;
 
   return (
-    <PageShell title={`Booking Details`} subtitle={`Order #${order._id?.slice(-8).toUpperCase()}`}>
+    <PageShell title={`Booking Details`} subtitle={`Order #${order.orderId || order._id?.slice(-8).toUpperCase()}`}>
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Back button */}

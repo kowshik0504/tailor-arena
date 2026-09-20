@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -9,7 +10,14 @@ import {
   CalendarDays, ArrowUpRight, Crown, TrendingUp, Clock,
 } from "lucide-react";
 
-export const Route = createFileRoute("/customer/")({ component: CustomerDashboard });
+export const Route = createFileRoute("/customer/")({ 
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      view: search.view as string | undefined,
+    }
+  },
+  component: CustomerDashboard 
+});
 
 const tailors = [
   { name: "Maison Aarav", city: "Mumbai · Bandra", rating: 4.9, orders: 312, tag: "Bridal · Sherwani", price: "from ₹6,500", img: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=800&q=80" },
@@ -32,6 +40,17 @@ const recentOrders = [
 
 function CustomerDashboard() {
   const { user } = useAuth();
+  const { view } = Route.useSearch();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (view) {
+      navigate({ to: "/customer/order/$id", params: { id: view }, replace: true });
+    }
+  }, [view, navigate]);
+
+  if (view) return null;
+
   return (
     <PageShell title={`Welcome back, ${user?.name?.split(" ")[0] || "Riya"}`} subtitle="Your perfect stitch starts here.">
       {/* Hero */}
@@ -147,8 +166,8 @@ function CustomerDashboard() {
           <div className="space-y-3">
             {recentOrders.map((o) => (
               <div key={o.id} className="flex items-center gap-4 p-3 rounded-2xl bg-gradient-soft border border-gold/60 hover:border-gold/40 transition">
-                <div className="h-12 w-12 rounded-xl bg-gradient-navy text-cream flex items-center justify-center font-display text-sm">
-                  {o.id.slice(-3)}
+                <div className="h-10 w-10 rounded-xl bg-gradient-navy text-cream flex items-center justify-center font-display text-[10px] px-1 text-center">
+                  {o.orderId ? o.orderId.replace('TA-', '') : o.id.slice(-3).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-navy">{o.item}</p>

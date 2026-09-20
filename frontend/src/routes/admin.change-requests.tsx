@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ function ChangeRequests() {
               >
                 <div className="flex items-start justify-between gap-4 flex-wrap pointer-events-none">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-mocha/70">{r._id.slice(-6)} · {new Date(r.updatedAt).toLocaleDateString()}</p>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-mocha/70">{r.orderId || r._id.slice(-6).toUpperCase()} · {new Date(r.updatedAt).toLocaleDateString()}</p>
                     <p className="font-display text-navy mt-1">{r.shopName || r.user?.name}</p>
                     <p className="text-sm text-mocha">Requested {changes.length} changes</p>
                   </div>

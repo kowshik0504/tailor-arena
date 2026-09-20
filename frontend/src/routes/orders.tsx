@@ -74,8 +74,8 @@ function Orders() {
       const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
       const filteredData = data.filter((b: any) => {
-        // If it's completed or cancelled, check if it's older than 24 hours
-        if (b.status === "completed" || b.status === "cancelled") {
+        // If it's completed, handed over, or cancelled, check if it's older than 24 hours
+        if (b.status === "completed" || b.status === "handed_over" || b.status === "cancelled") {
           const updatedTime = new Date(b.updatedAt || b.createdAt).getTime();
           if (now - updatedTime > ONE_DAY_MS) {
             return false; // Hide from Kanban
@@ -90,10 +90,11 @@ function Orders() {
         else if (b.status === "cancelled") status = "Rejected";
         else if (b.status === "hold") status = "Changes Requested";
         else if (b.status === "in-progress") status = "In Stitching";
-        else if (b.status === "completed") status = "Completed";
+        else if (b.status === "completed" || b.status === "handed_over") status = "Completed";
 
         return {
           id: b._id,
+          orderId: b.orderId,
           customer: b.customer?.name || "Unknown",
           phone: b.customer?.phone || "Not provided",
           garment: b.dressType || "Garment",
@@ -238,7 +239,9 @@ function Orders() {
                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <p className="font-display text-base mt-3">{item.garment}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{item.customer} · {item.id}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {item.customer} · {item.orderId || (item.id.startsWith('TA-') ? item.id : `TA-${item.id.slice(-6).toUpperCase()}`)}
+                  </p>
                   <div className="mt-4 pt-3 border-t border-gold/50 flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1 text-mocha"><Clock className="h-3 w-3" />{item.due}</span>
                     {item.chat.length > 0 && (

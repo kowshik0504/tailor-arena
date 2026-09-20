@@ -1,7 +1,43 @@
-﻿const TailorProfile = require('../models/TailorProfile');
+const TailorProfile = require('../models/TailorProfile');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { sendFreemiumEmail } = require('./authController');
+
+// Helper to generate custom shop ID
+const generateShopId = async (businessName, userName) => {
+  const nameToUse = businessName || userName || 'TAILOR';
+  const words = nameToUse.split(' ').filter(w => w.length > 0);
+  let initials = '';
+  if (words.length >= 2) {
+    initials = (words[0][0] + words[1][0]).toUpperCase();
+  } else if (words.length === 1) {
+    initials = words[0].slice(0, 2).toUpperCase();
+    if (initials.length === 1) initials += 'X';
+  } else {
+    initials = 'XX';
+  }
+
+  const prefix = `TA-${initials}`;
+  
+  // Find highest number for this prefix
+  const existingProfiles = await TailorProfile.find({ shopId: { $regex: `^${prefix}\\d+$` } });
+  
+  let maxNum = 0;
+  for (const p of existingProfiles) {
+    if (p.shopId) {
+      const numStr = p.shopId.replace(prefix, '');
+      const num = parseInt(numStr, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  const nextNumStr = nextNum.toString().padStart(2, '0');
+  
+  return `${prefix}${nextNumStr}`;
+};
 
 exports.registerTailor = async (req, res) => {
   try {
@@ -21,8 +57,11 @@ exports.registerTailor = async (req, res) => {
     const aadharDocUrl = req.files?.aadharDoc?.[0]?.path || '';
     const machinePhotoUrl = req.files?.machinePhoto?.[0]?.path || '';
 
+    const shopId = await generateShopId(shopName, req.user.name);
+
     const profile = await TailorProfile.create({
       user: req.user._id,
+      shopId,
       phone,
       shopNumber,
       houseDetails,
@@ -95,8 +134,11 @@ exports.registerOnboarding = async (req, res) => {
       }
     }
 
+    const shopId = await generateShopId(shopName, req.user.name);
+
     const profile = await TailorProfile.create({
       user: req.user._id,
+      shopId,
       phone: phone || req.user.phone,
       gstin: gstin || '',
       established: established || '',
@@ -265,7 +307,9 @@ exports.registerStep = async (req, res) => {
 
 exports.getDashboard = async (req, res) => {
   try {
-    const profile = await TailorProfile.findOne({ user: req.user._id }).populate('user', 'name email');
+    const profile = await TailorProfile.findOne({ user: req.user._id })
+      .populate('user', 'name email')
+      .populate('wallet.bookingId', 'orderId');
     if (!profile) {
       return res.status(404).json({ message: 'Tailor profile not found' });
     }
@@ -401,7 +445,9 @@ exports.getDashboard = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const profile = await TailorProfile.findOne({ user: req.user._id }).populate('user', 'name email');
+    const profile = await TailorProfile.findOne({ user: req.user._id })
+      .populate('user', 'name email')
+      .populate('wallet.bookingId', 'orderId');
     if (!profile) {
       return res.status(404).json({ message: 'Profile not found' });
     }

@@ -167,7 +167,7 @@ exports.sendAcceptanceEmail = async (email, name, tailorName, date, time, bookin
             <p style="color: #636E72; font-size: 14px; line-height: 1.6;">Please visit the shop at your scheduled time. If you need to navigate or call the tailor, check your dashboard.</p>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer?view=${bookingId}" style="background-color: #6C63FF; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">View Booking Details</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer/order/${bookingId}" style="background-color: #6C63FF; color: white; padding: 16px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">View Booking Details</a>
             </div>
         </div>
         <div style="background-color: #F1F2F6; padding: 25px; text-align: center; color: #B2BEC3; font-size: 12px;">
@@ -273,7 +273,7 @@ exports.sendCompletionEmail = async (email, name, tailorName, dressType, amount 
 
             ${remainingAmount > 0 ? `
             <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px; align-items: center;">
-                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=wallet" style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Wallet</a>
+                <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=cash" style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay by Cash to Tailor</a>
                 <a href="${frontendUrl}/customer/dummy-payment?orderId=${bookingId}&amount=${remainingAmount}&method=online" style="background-color: #0984E3; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; width: 80%; display: block;">Pay Online</a>
             </div>
             ` : ''}
@@ -1000,5 +1000,62 @@ exports.checkRole = async (req, res) => {
     res.json({ role: user.role, name: user.name });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// ================= PAYMENT FAILED EMAIL =================
+exports.sendPaymentFailedEmail = async (email, name, orderId, method, reason, amount) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    });
+
+    const logoPath = path.join(__dirname, '../../public/logo.jpeg');
+    let attachments = [];
+    if (fs.existsSync(logoPath)) {
+      attachments.push({ filename: 'logo.jpeg', path: logoPath, cid: 'logo' });
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    // Clean up order ID for display
+    const displayOrderId = orderId ? orderId.toString().slice(-6).toUpperCase() : 'UNKNOWN';
+
+    await transporter.sendMail({
+      from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Payment Failed - Action Required ⚠️',
+      html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+          <div style="background-color: #2D3436; padding: 30px; text-align: center;">
+              ${fs.existsSync(logoPath) ? '<img src="cid:logo" alt="Tailor Arena" style="max-width: 140px;">' : '<h1 style="color: #fff; margin: 0;">TAILOR ARENA</h1>'}
+          </div>
+          <div style="padding: 40px; color: #2D3436;">
+              <h2 style="margin-top: 0; font-size: 24px; color: #E53E3E; text-align: center;">Payment Failed</h2>
+              <p style="font-size: 16px; line-height: 1.6; text-align: center;">Hi ${name},</p>
+              <p style="font-size: 16px; line-height: 1.6; text-align: center;">We encountered an issue with your payment for Order <strong>#TA-${displayOrderId}</strong>.</p>
+              
+              <div style="background-color: #FFF5F5; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #FEB2B2; text-align: center;">
+                  <p style="margin: 0; color: #C53030; font-weight: bold; font-size: 15px;">Reason: ${reason}</p>
+              </div>
+
+              <p style="font-size: 15px; line-height: 1.6; text-align: center; color: #4A5568;">
+                  Don't worry! You can easily try again using the button below. Your chosen payment method was: <strong>${method ? method.toUpperCase() : 'ONLINE'}</strong>.
+              </p>
+
+              <div style="text-align: center; margin-top: 35px;">
+                  <a href="${frontendUrl}/customer/dummy-payment?orderId=${orderId}&amount=${amount || 0}&method=${method || 'online'}" style="background-color: #E53E3E; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Pay Again via ${method ? method.toUpperCase() : 'ONLINE'}</a>
+              </div>
+          </div>
+          <div style="background-color: #F8F9FA; padding: 20px; text-align: center; border-top: 1px solid #EEE;">
+              <p style="margin: 0; color: #A0AEC0; font-size: 13px;">Need help? Reply to this email to contact support.</p>
+              <p style="margin: 5px 0 0 0; color: #A0AEC0; font-size: 13px;">&copy; 2026 Tailor Arena. All rights reserved.</p>
+          </div>
+      </div>
+      `,
+      attachments: attachments
+    });
+  } catch (error) {
+    console.error('Error sending payment failed email:', error);
   }
 };

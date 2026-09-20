@@ -62,15 +62,27 @@ function MyBookings() {
   useEffect(() => {
     api.get('/bookings/customer').then(res => {
       if (res.data) {
-        setAllBookings(res.data.map((b: any) => ({
-          id: b._id,
-          tailor: b.tailor?.businessName || b.tailor?.user?.name || "Tailor",
-          service: b.workType || "Stitching",
-          garment: b.dressType || "Custom",
-          bookedOn: new Date(b.createdAt).toLocaleDateString(),
-          delivery: b.deliveryDate || "TBD",
-          status: b.status === "handed_over" ? "Completed" : b.status === "New" ? "Pending Approval" : b.status,
-        })));
+        setAllBookings(res.data.map((b: any) => {
+          let mappedStatus = b.status;
+          if (b.status === "pending" || b.status === "New") mappedStatus = "Pending Approval";
+          else if (b.status === "acknowledged" || b.status === "confirmed") mappedStatus = "Accepted";
+          else if (b.status === "hold") mappedStatus = "Changes Requested";
+          else if (b.status === "in-progress") mappedStatus = "Stitching Started";
+          else if (b.status === "completed" || b.status === "handed_over") mappedStatus = "Completed";
+          else if (b.status === "cancelled") mappedStatus = "Cancelled";
+          
+          return {
+            id: b._id,
+            orderId: b.orderId,
+            tailor: b.tailor?.businessName || b.tailor?.user?.name || "Tailor",
+            service: b.workType || "Stitching",
+            garment: b.dressType || "Custom",
+            bookedOn: new Date(b.createdAt).toLocaleDateString(),
+            appointmentDate: b.date ? new Date(b.date).toLocaleDateString() : "N/A",
+            delivery: b.deliveryDate || "TBD",
+            status: mappedStatus,
+          };
+        }));
       }
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
@@ -116,14 +128,14 @@ function MyBookings() {
               <Card className="p-5 border-gold/60 shadow-luxe hover:shadow-glow hover:-translate-y-0.5 transition-all">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-navy text-cream flex items-center justify-center font-display text-xs">
-                    {b.id.slice(-3)}
+                  <div className="h-12 w-12 rounded-xl bg-gradient-navy text-cream flex items-center justify-center font-display text-xs px-1 text-center">
+                    {b.orderId ? b.orderId.replace('TA-', '') : b.id.slice(-3).toUpperCase()}
                   </div>
                   <div>
                     <p className="font-display text-lg text-navy">{b.garment}</p>
                     <p className="text-xs text-mocha/70">{b.tailor} · {b.service}</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Booked {b.bookedOn} · Delivery {b.delivery}
+                      Appt: {b.appointmentDate} · Booked: {b.bookedOn}
                     </p>
                   </div>
                 </div>

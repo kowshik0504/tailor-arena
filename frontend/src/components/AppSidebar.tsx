@@ -1,4 +1,4 @@
-﻿import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Ruler, Scissors, Sparkles,
   CalendarDays, Bell, BarChart3, Settings, LogOut,
@@ -24,6 +24,7 @@ const tailorMenu: Section[] = [
       { title: "Appointments", url: "/appointments", icon: CalendarDays },
       { title: "Messages", url: "/chat", icon: MessageCircle },
       { title: "Wallet", url: "/wallet", icon: IndianRupee },
+      { title: "Reminders", url: "/notifications", icon: Bell },
       { title: "Availability", url: "/availability", icon: Zap },
     ],
   },
@@ -37,8 +38,6 @@ const tailorMenu: Section[] = [
       { title: "Design Catalog", url: "/catalog", icon: Sparkles },
       { title: "Portfolio", url: "/portfolio", icon: ImageIcon },
       { title: "History", url: "/history", icon: History },
-      { title: "Wallet", url: "/wallet", icon: HandCoins },
-      { title: "Reminders", url: "/notifications", icon: Bell },
     ],
   },
   {

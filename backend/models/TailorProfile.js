@@ -41,6 +41,11 @@ const tailorProfileSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  shopId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   phone: { type: String, default: '' },
   shopNumber: { type: String },
   houseDetails: { type: String },

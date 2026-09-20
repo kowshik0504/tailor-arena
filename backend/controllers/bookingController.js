@@ -1,7 +1,29 @@
-﻿const Booking = require('../models/Booking');
+const Booking = require('../models/Booking');
 const TailorProfile = require('../models/TailorProfile');
-const { sendStartWorkEmail, sendSlotUpdateEmail, sendHandoverEmail, sendDelayEmail } = require('./authController');
+const { sendStartWorkEmail, sendSlotUpdateEmail, sendHandoverEmail, sendDelayEmail, sendPaymentFailedEmail } = require('./authController');
 const notificationService = require('../services/notificationService');
+
+const generateOrderId = async (shopId) => {
+  const prefix = shopId || 'TA-XX01';
+  
+  const existingBookings = await Booking.find({ orderId: { $regex: `^${prefix}\\d+$` } });
+  
+  let maxNum = 0;
+  for (const b of existingBookings) {
+    if (b.orderId) {
+      const numStr = b.orderId.replace(prefix, '');
+      const num = parseInt(numStr, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  const nextNumStr = nextNum.toString().padStart(2, '0');
+  
+  return `${prefix}${nextNumStr}`;
+};
 
 const DEFAULT_SLOTS = [
   '9:00 AM - 10:00 AM',
@@ -23,7 +45,7 @@ exports.getAvailableSlots = async (req, res) => {
     const existingBookings = await Booking.find({
       tailor: tailorId,
       date: new Date(date),
-      status: { $nin: ['cancelled'] }
+      status: { $nin: ['cancelled', 'completed', 'handed_over'] }
     });
 
     const bookedTimes = new Set(existingBookings.map(b => b.timeSlot));
@@ -56,15 +78,18 @@ exports.createBooking = async (req, res) => {
       tailor: tailorId,
       date: new Date(date),
       timeSlot,
-      status: { $nin: ['cancelled'] }
+      status: { $nin: ['cancelled', 'completed', 'handed_over'] }
     });
 
     if (existingBooking) {
-      return res.status(400).json({ message: 'This time slot is already booked' });
+      return res.status(400).json({ message: 'Slot already booked' });
     }
 
-    const booking = await Booking.create({
+    const orderId = await generateOrderId(tailor.shopId);
+
+    const booking = new Booking({
       customer: req.user._id,
+      orderId,
       tailor: tailorId,
       dressType,
       workType: workType || 'stitching',
@@ -80,6 +105,8 @@ exports.createBooking = async (req, res) => {
       measurements: measurements || [],
       chat: []
     });
+
+    await booking.save();
 
     // Handle Freemium Activation Fee on FIRST booking
     if (!tailor.paid && !tailor.activationFeeTriggered) {
@@ -440,7 +467,7 @@ exports.updateBookingSlot = async (req, res) => {
       date: new Date(date),
       timeSlot,
       _id: { $ne: booking._id },
-      status: { $nin: ['cancelled'] }
+      status: { $nin: ['cancelled', 'completed', 'handed_over'] }
     });
 
     if (existingBooking) {
@@ -520,6 +547,23 @@ exports.rejectCashPayment = async (req, res) => {
 
     booking.cashRequestStatus = 'rejected';
     const updated = await booking.save();
+    
+    // Notify customer
+    await booking.populate('customer');
+    try {
+      const remainingAmount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+      await sendPaymentFailedEmail(
+        booking.customer.email, 
+        booking.customer.name, 
+        booking._id, 
+        'cash', 
+        'The tailor reported that they did not receive the cash payment.',
+        remainingAmount
+      );
+    } catch (err) {
+      console.error('Failed to send cash payment rejection email:', err);
+    }
+    
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -628,11 +672,54 @@ exports.confirmOnlinePayment = async (req, res) => {
 
 exports.rejectOnlinePayment = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id).populate('customer');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     booking.onlinePaymentStatus = 'rejected';
     await booking.save();
+    
+    try {
+      const remainingAmount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+      await sendPaymentFailedEmail(
+        booking.customer.email, 
+        booking.customer.name, 
+        booking._id, 
+        booking.paymentMethod || 'online', 
+        'The tailor declined the online payment verification.',
+        remainingAmount
+      );
+    } catch (err) {
+      console.error('Failed to send online payment rejection email:', err);
+    }
+
     res.json({ message: 'Online payment rejected' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.reportPaymentFailed = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('customer');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.customer._id.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+
+    const { method, reason } = req.body;
+
+    try {
+      const remainingAmount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+      await sendPaymentFailedEmail(
+        booking.customer.email, 
+        booking.customer.name, 
+        booking._id, 
+        method || 'online', 
+        reason || 'Technical Error',
+        remainingAmount
+      );
+    } catch (err) {
+      console.error('Failed to send payment failed email:', err);
+    }
+
+    res.json({ message: 'Failure reported and email sent' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

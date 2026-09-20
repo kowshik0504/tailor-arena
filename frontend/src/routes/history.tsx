@@ -91,7 +91,7 @@ function HistoryPage() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="font-medium text-navy">{order.dressType || "Garment"}</span>
-                        <span className="text-[10px] text-mocha uppercase mt-0.5 tracking-wider">#{order._id?.slice(-8)}</span>
+                        <span className="text-[10px] text-mocha uppercase mt-0.5 tracking-wider">#{order.orderId || order._id?.slice(-8).toUpperCase()}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">

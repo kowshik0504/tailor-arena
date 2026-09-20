@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
 const { protect } = require('../middleware/auth');
@@ -29,6 +29,7 @@ router.put('/:id/delay-handover', protect, roleCheck('tailor'), bookingControlle
 router.put('/:id/pay-online', protect, roleCheck('customer'), bookingController.payOnline);
 router.put('/:id/confirm-online', protect, roleCheck('tailor'), bookingController.confirmOnlinePayment);
 router.put('/:id/reject-online', protect, roleCheck('tailor'), bookingController.rejectOnlinePayment);
+router.post('/:id/payment-failed', protect, roleCheck('customer'), bookingController.reportPaymentFailed);
 
 module.exports = router;
 

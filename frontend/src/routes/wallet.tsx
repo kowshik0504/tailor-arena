@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -7,9 +7,16 @@ import { Input } from "@/components/ui/input";
 import { IndianRupee, ArrowUpRight, ArrowDownLeft, Clock, AlertTriangle, CheckCircle2, Building, ShieldCheck, HandCoins, Check, X } from "lucide-react";
 import api from "@/lib/api";
 
-export const Route = createFileRoute("/wallet")({ component: TailorWallet });
+export const Route = createFileRoute("/wallet")({ 
+  validateSearch: (search: Record<string, unknown>) => ({
+    highlight: search.highlight as string | undefined,
+  }),
+  component: TailorWallet 
+});
 
 function TailorWallet() {
+  const { highlight } = Route.useSearch();
+  const navigate = useNavigate();
   const [balance, setBalance] = useState(0);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -105,6 +112,17 @@ function TailorWallet() {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (highlight && !loading) {
+      setTimeout(() => {
+        const el = document.getElementById(`payment-${highlight}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [highlight, loading]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,7 +263,7 @@ function TailorWallet() {
                 </div>
               ) : (
                 paymentHistory.map((w, i) => (
-                  <div key={i} className={`flex flex-col gap-2 p-3 rounded-xl border transition-colors ${w.type === 'cash_handover' && w.status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'border-gold/20 hover:bg-gold/5'}`}>
+                  <div key={i} id={`payment-${typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId}`} onClick={() => w.bookingId && navigate({ to: '/order/$id', params: { id: typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId } })} className={`flex flex-col gap-2 p-3 rounded-xl border transition-colors cursor-pointer ${w.type === 'cash_handover' && w.status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'border-gold/20 hover:bg-gold/5'} ${highlight === (typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId) ? 'ring-2 ring-gold shadow-glow animate-pulse' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`h-10 w-10 rounded-full flex items-center justify-center ${w.type === 'withdrawal' ? 'bg-rose-100 text-rose-600' : w.type === 'online_payment' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
@@ -255,7 +273,7 @@ function TailorWallet() {
                           <p className="text-sm font-semibold text-navy">
                             {w.type === 'withdrawal' ? 'Withdrawal' : w.type === 'online_payment' ? `${w.label} from ${w.customer}` : `Cash from ${w.customer}`}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {w.bookingId ? `· ${typeof w.bookingId === 'object' ? (w.bookingId.orderId || `TA-${w.bookingId._id?.slice(-6).toUpperCase()}`) : `TA-${w.bookingId.slice(-6).toUpperCase()}`}` : ''}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -285,7 +303,7 @@ function TailorWallet() {
               </div>
             ) : (
               recentActivities.map((w, i) => (
-                <div key={i} className={`flex flex-col gap-2 p-3 rounded-xl border transition-colors ${w.type === 'cash_handover' && w.status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'border-gold/20 hover:bg-gold/5'}`}>
+                <div key={i} id={`payment-recent-${typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId}`} onClick={() => w.bookingId && navigate({ to: '/order/$id', params: { id: typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId } })} className={`flex flex-col gap-2 p-3 rounded-xl border transition-colors cursor-pointer ${w.type === 'cash_handover' && w.status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'border-gold/20 hover:bg-gold/5'} ${highlight === (typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId) ? 'ring-2 ring-gold shadow-glow animate-pulse' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center ${w.type === 'withdrawal' ? 'bg-rose-100 text-rose-600' : w.type === 'online_payment' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
@@ -295,7 +313,7 @@ function TailorWallet() {
                         <p className="text-sm font-semibold text-navy">
                           {w.type === 'withdrawal' ? 'Withdrawal' : w.type === 'online_payment' ? `${w.label} from ${w.customer}` : `Cash from ${w.customer}`}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(w.date).toLocaleDateString()} · {new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {w.bookingId ? `· ${typeof w.bookingId === 'object' ? (w.bookingId.orderId || `TA-${w.bookingId._id?.slice(-6).toUpperCase()}`) : `TA-${w.bookingId.slice(-6).toUpperCase()}`}` : ''}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -305,12 +323,22 @@ function TailorWallet() {
                       </p>
                     </div>
                   </div>
+                  {w.isOnlineRequest && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50 rounded-full" onClick={(e) => { e.stopPropagation(); w.onOnlineReject?.(); }}>
+                        <X className="h-3 w-3 mr-1" /> Not Verified
+                      </Button>
+                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 text-white hover:bg-emerald-700 rounded-full" onClick={(e) => { e.stopPropagation(); w.onOnlineApprove?.(); }}>
+                        <Check className="h-3 w-3 mr-1" /> Checked in bank
+                      </Button>
+                    </div>
+                  )}
                   {w.type === 'cash_handover' && w.status === 'pending' && (
                     <div className="flex items-center gap-2 mt-1">
-                      <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50 rounded-full" onClick={() => handleCashAction(w.bookingId, 'reject')}>
+                      <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50 rounded-full" onClick={(e) => { e.stopPropagation(); handleCashAction(typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId, 'reject'); }}>
                         <X className="h-3 w-3 mr-1" /> No
                       </Button>
-                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 text-white hover:bg-emerald-700 rounded-full" onClick={() => handleCashAction(w.bookingId, 'confirm')}>
+                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 text-white hover:bg-emerald-700 rounded-full" onClick={(e) => { e.stopPropagation(); handleCashAction(typeof w.bookingId === 'object' ? w.bookingId._id : w.bookingId, 'confirm'); }}>
                         <Check className="h-3 w-3 mr-1" /> Received in hand
                       </Button>
                     </div>

@@ -1,10 +1,23 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Package, IndianRupee, CalendarDays, AlertCircle, Bell, Check, HandCoins, X, CheckCircle2 } from "lucide-react";
+
+const formatTime = (time: number) => {
+  const diffMs = Date.now() - time;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  
+  return new Date(time).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
 
 export const Route = createFileRoute("/notifications")({ component: Notifications });
 
@@ -25,8 +38,6 @@ type Reminder = {
 };
 
 const filters = ["All", "Delivery", "Payment", "Appointment", "Delayed"];
-
-import api from "@/lib/api";
 
 function Notifications() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -71,49 +82,84 @@ function Notifications() {
       let title = "Action needed";
       let I = CalendarDays;
       let tint = "bg-gradient-rose";
-      let when = o.due || o.delivery || "Soon";
+      
+      const updateTime = new Date(o.updatedAt || o.createdAt).getTime();
+      let when = o.due || o.delivery || formatTime(updateTime);
+      let detail = "";
+      let isCashRequest = false;
+      let isOnlineRequest = false;
 
-      if (o.onlinePaymentStatus === 'pending') {
+      if (o.cashRequestStatus === 'pending' && o.paymentMethod === 'cash') {
         type = "Payment";
-        title = "Online Payment Verification";
-        I = IndianRupee;
-        tint = "bg-gradient-cream text-navy";
-      } else if (o.cashRequestStatus === 'pending') {
-        type = "Payment";
-        title = "Cash Payment Handover";
+        title = "Cash Payment Verification";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] Remaining amount of ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} requested to be paid via CASH`;
         I = HandCoins;
         tint = "bg-gradient-cream text-navy";
+        when = formatTime(updateTime);
+        isCashRequest = true;
+      } else if (o.onlinePaymentStatus === 'pending') {
+        type = "Payment";
+        title = "Online Payment Verification";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] Remaining amount of ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} paid via ${(o.paymentMethod || 'upi').toUpperCase()}`;
+        I = IndianRupee;
+        tint = "bg-gradient-cream text-navy";
+        when = formatTime(updateTime);
+        isOnlineRequest = true;
+      } else if (o.cashRequestStatus === 'pending') {
+        type = "Payment";
+        title = "Cash Payment Verification";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] Remaining amount of ₹${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} requested to be paid via CASH`;
+        I = HandCoins;
+        tint = "bg-gradient-cream text-navy";
+        when = formatTime(updateTime);
+        isCashRequest = true;
       } else if (o.status === "Pending" || o.status === "New") {
-        type = "Appointment";
+        type = "Action Required";
         title = "New Booking Request";
-        I = CalendarDays;
-        tint = "bg-gradient-gold";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] ${o.customer?.name || 'Customer'} - ${o.dressType || o.dress || 'Custom Order'}`;
+        I = Clock;
+        tint = "bg-champagne text-navy";
+      } else if (o.status === "Rejected") {
+        type = "Declined";
+        title = "Booking Rejected";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] ${o.customer?.name || 'Customer'} - ${o.dressType || o.dress || 'Custom Order'}`;
+        I = AlertCircle;
+        tint = "bg-rose-100 text-rose-800";
+      } else if (o.status === "Request Changes" || o.status === "Changes Requested") {
+        type = "Delayed";
+        title = "Changes Requested";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] ${o.customer?.name || 'Customer'} requested changes`;
+        I = AlertCircle;
+        tint = "bg-terracotta/15 text-terracotta";
       } else if (o.status === "Ready for Delivery") {
         type = "Delivery";
         title = "Ready for Delivery";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] ${o.customer?.name || 'Customer'} - Ready for Delivery`;
         I = Package;
         tint = "bg-gradient-luxe text-primary-foreground";
       } else if (o.status === "In Stitching") {
         type = "Delivery";
         title = "In Progress";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] ${o.customer?.name || 'Customer'} - In Progress`;
         I = Package;
         tint = "bg-gradient-cream";
-      } else if (o.status === "Request Changes" || o.status === "Changes Requested") {
-        type = "Delayed";
-        title = "Changes Requested";
+      } else {
+        type = "Notice";
+        title = "Update";
+        detail = `[${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}] ${o.customer?.name || 'Customer'} - ${o.dressType || o.dress || 'Custom Order'}`;
         I = AlertCircle;
-        tint = "bg-terracotta/15 text-terracotta";
+        tint = "bg-gold/15 text-navy";
       }
 
       return {
         type,
         title,
-        detail: o.onlinePaymentStatus === 'pending' ? `Remaining amount of ?${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} received in ${o.paymentMethod || 'upi'}` : o.cashRequestStatus === 'pending' ? `Remaining amount of ?${o.amount - (o.baseAmountPaid || Math.min(500, o.amount))} must be pay in cash` : `${o.customer?.name || 'Customer'} - ${o.dressType || o.dress || 'Custom Order'}`,
+        detail,
         when,
         I,
         tint,
-        isCashRequest: o.cashRequestStatus === 'pending',
-        isOnlineRequest: o.onlinePaymentStatus === 'pending',
+        isCashRequest,
+        isOnlineRequest,
         orderId: o._id,
         onApprove: () => handleCashAction(o._id, 'confirm'),
         onReject: () => handleCashAction(o._id, 'reject'),
@@ -137,9 +183,11 @@ function Notifications() {
           <div className="col-span-full py-12 text-center text-sm text-muted-foreground bg-cream0 rounded-xl">
             All caught up. No reminders at the moment!
           </div>
-        ) : reminders.map((r, i) => (
+        ) : reminders.map((r, i) => {
+          const isPayment = r.isOnlineRequest || r.isCashRequest;
+          return (
           <Card key={i} className="p-5 border-gold/60 shadow-luxe hover:shadow-glow transition group">
-            <Link to="/order/$id" params={{ id: r.orderId! }} className="block cursor-pointer">
+            <Link to={isPayment ? "/wallet" : "/order/$id"} params={isPayment ? undefined : { id: r.orderId! }} search={isPayment ? { highlight: r.orderId } : undefined} className="block cursor-pointer">
               <div className="flex items-start justify-between">
                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-luxe ${r.tint}`}>
                   <r.I className="h-4 w-4" />
@@ -150,36 +198,31 @@ function Notifications() {
               <p className="text-xs text-muted-foreground mt-1">{r.detail}</p>
             </Link>
             
-            {r.isOnlineRequest ? (
-              <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between gap-2">
-                <Button size="sm" variant="outline" className="rounded-full h-8 flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => { e.preventDefault(); r.onOnlineReject?.(); }}>
-                  <X className="h-3 w-3 mr-1" /> Not
-                </Button>
-                <Button size="sm" className="rounded-full h-8 flex-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700" onClick={(e) => { e.preventDefault(); r.onOnlineApprove?.(); }}>
-                  <Check className="h-3 w-3 mr-1" /> Checked in bank
-                </Button>
-              </div>
-            ) : r.isCashRequest ? (
-              <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between gap-2">
-                <Button size="sm" variant="outline" className="rounded-full h-8 flex-1 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => { e.preventDefault(); r.onReject?.(); }}>
-                  <X className="h-3 w-3 mr-1" /> No
-                </Button>
-                <Button size="sm" className="rounded-full h-8 flex-1 text-xs bg-navy text-cream" onClick={(e) => { e.preventDefault(); r.onApprove?.(); }}>
-                  <Check className="h-3 w-3 mr-1" /> Received in hand
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-4 pt-3 border-t border-gold/40 flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-gold/40 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
                 <span className="text-[11px] text-mocha">{r.when}</span>
-                <Link to="/order/$id" params={{ id: r.orderId! }}>
-                  <Button size="sm" variant="ghost" className="rounded-full h-7 text-xs gap-1 opacity-60 group-hover:opacity-100">
-                    <Check className="h-3 w-3" /> View Order
-                  </Button>
-                </Link>
+                {isPayment ? (
+                  <div className="flex items-center gap-2">
+                    {!r.isCashRequest && (
+                      <Button size="sm" variant="outline" className="rounded-full h-7 text-xs px-3 border-rose-200 text-rose-600 hover:bg-rose-50" onClick={(e) => { e.preventDefault(); e.stopPropagation(); r.isOnlineRequest ? r.onOnlineReject?.() : r.onReject?.(); }}>
+                        No (Decline)
+                      </Button>
+                    )}
+                    <Button size="sm" className="rounded-full h-7 text-xs px-3 bg-navy text-white hover:bg-navy/90 gap-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); r.isOnlineRequest ? r.onOnlineApprove?.() : r.onApprove?.(); }}>
+                      <Check className="h-3 w-3" /> Yes (Confirm)
+                    </Button>
+                  </div>
+                ) : (
+                  <Link to={"/order/$id"} params={{ id: r.orderId! }}>
+                    <Button size="sm" variant="ghost" className="rounded-full h-7 text-xs gap-1 opacity-60 group-hover:opacity-100">
+                      <Check className="h-3 w-3" /> View Order
+                    </Button>
+                  </Link>
+                )}
               </div>
-            )}
+            </div>
           </Card>
-        ))}
+        )})}
       </div>
     </PageShell>
   );

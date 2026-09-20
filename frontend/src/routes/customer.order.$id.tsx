@@ -104,7 +104,7 @@ function CustomerOrderDetails() {
   const statusLabel = (booking.status || "pending").replace("-", " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
 
   return (
-    <PageShell title="Booking Details" subtitle={`Order #${booking._id?.slice(-8).toUpperCase()}`}>
+    <PageShell title="Booking Details" subtitle={`Order #${booking.orderId || booking._id?.slice(-8).toUpperCase()}`}>
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* Back button */}
@@ -205,7 +205,7 @@ function CustomerOrderDetails() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Total Amount</p>
-                <p className="font-display text-xl text-navy">?{booking.amount || 0}</p>
+                <p className="font-display text-xl text-navy">₹{booking.amount || 0}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -214,7 +214,7 @@ function CustomerOrderDetails() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-emerald-600 mb-1">Advance Paid</p>
-                <p className="font-display text-xl text-emerald-600">?{booking.baseAmountPaid || Math.min(500, booking.amount)}</p>
+                <p className="font-display text-xl text-emerald-600">₹{booking.baseAmountPaid || Math.min(500, booking.amount)}</p>
                 <p className="text-xs text-mocha">Online</p>
               </div>
             </div>
@@ -225,7 +225,7 @@ function CustomerOrderDetails() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-rose-600 mb-1">Remaining Balance</p>
-                <p className="font-display text-xl text-rose-600">?{booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount))}</p>
+                <p className="font-display text-xl text-rose-600">₹{booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount))}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 border-t border-gold/20 pt-4">
@@ -245,6 +245,81 @@ function CustomerOrderDetails() {
           </div>
 
         </Card>
+
+        {/* Cash Rejected Banner */}
+        {booking.cashRequestStatus === 'rejected' && (
+          <Card className="p-5 border-rose-200 bg-rose-50 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5 text-rose-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-display text-lg text-rose-800">Cash Payment Declined</h3>
+                <p className="text-sm text-rose-700/90 mt-1 mb-4">
+                  The tailor reported that they did not receive the cash payment from you by hand. Would you like to pay the remaining balance online or chat with the tailor to resolve this?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    size="sm" 
+                    className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm"
+                    onClick={() => navigate({ to: "/customer/dummy-payment", search: { orderId: booking._id, amount: String(booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount))), method: "online" } })}
+                  >
+                    Pay Remaining Online
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-xl shadow-sm"
+                    onClick={() => navigate({ to: "/customer/dummy-payment", search: { orderId: booking._id, amount: String(booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount))), method: "cash" } })}
+                  >
+                    Request Cash Again
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl"
+                    onClick={() => navigate({ to: "/customer/chat" })}
+                  >
+                    Chat with Tailor
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Online Rejected Banner */}
+        {booking.onlinePaymentStatus === 'rejected' && (
+          <Card className="p-5 border-rose-200 bg-rose-50 shadow-sm animate-in fade-in slide-in-from-top-2 mt-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5 text-rose-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-display text-lg text-rose-800">Online Payment Declined</h3>
+                <p className="text-sm text-rose-700/90 mt-1 mb-4">
+                  The tailor reported that they did not receive your online payment. Would you like to try paying online again or chat with the tailor to resolve this?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    size="sm" 
+                    className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm"
+                    onClick={() => navigate({ to: "/customer/dummy-payment", search: { orderId: booking._id, amount: String(booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount))), method: "online" } })}
+                  >
+                    Try Online Payment Again
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl"
+                    onClick={() => navigate({ to: "/customer/chat" })}
+                  >
+                    Chat with Tailor
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Design image */}
         {booking.designImg && !booking.designImg.includes("linear-gradient") && (

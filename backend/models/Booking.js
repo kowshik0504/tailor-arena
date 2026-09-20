@@ -1,10 +1,15 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  orderId: {
+    type: String,
+    unique: true,
+    sparse: true
   },
   tailor: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,14 +30,10 @@ const bookingSchema = new mongoose.Schema({
     default: 'confirmed'
   },
   onlinePaymentStatus: {
-      type: String,
-      enum: ['pending', 'approved', 'rejected']
-    },
-    onlinePaymentStatus: {
-      type: String,
-      enum: ['pending', 'approved', 'rejected'],
-      default: 'pending'
-    },
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none'
+  },
     paymentStatus: {
     type: String,
     enum: ['pending', 'paid', 'pay_later'],
@@ -52,7 +53,7 @@ const bookingSchema = new mongoose.Schema({
   phonepeTransactionId: { type: String },
   paymentMethod: {
     type: String,
-    enum: ['gpay', 'phonepe', 'credit_card', 'debit_card', 'cash', 'online', 'upi', 'netbanking']
+    enum: ['gpay', 'phonepe', 'credit_card', 'debit_card', 'cash', 'online', 'upi', 'netbanking', 'wallet']
   },
   notes: { type: String },
   designImg: { type: String },
