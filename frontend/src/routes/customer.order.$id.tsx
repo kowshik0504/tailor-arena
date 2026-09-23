@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
@@ -94,7 +94,7 @@ function CustomerOrderDetails() {
         month: "long",
         day: "numeric",
       })
-    : "—";
+    : "â€”";
 
   const tailorName =
     booking.tailor?.shopName ||
@@ -106,11 +106,17 @@ function CustomerOrderDetails() {
   return (
     <PageShell title="Booking Details" subtitle={`Order #${booking.orderId || booking._id?.slice(-8).toUpperCase()}`}>
       <div className="max-w-3xl mx-auto space-y-6">
+        {/* Print Only Invoice Header */}
+        <div className="hidden print:block text-center space-y-1 mb-8 pt-8">
+          <h1 className="font-display text-3xl text-navy font-bold tracking-[0.15em] mb-3">INVOICE</h1>
+          <p className="text-xs text-mocha uppercase tracking-widest">{booking.tailor?.shopName || "TAILOR ARENA"}</p>
+          <p className="text-sm text-navy mt-1">Order #{booking.orderId || booking._id?.slice(-8).toUpperCase()}</p>
+          <p className="text-[10px] text-mocha">Printed on {new Date().toLocaleDateString()}</p>
+        </div>
+
 
         {/* Back button */}
-        <Button
-          variant="ghost"
-          className="text-mocha hover:text-navy -ml-2"
+        <Button variant="ghost" className="print:hidden text-mocha hover:text-navy -ml-2"
           onClick={() => navigate({ to: "/customer" })}
         >
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
@@ -172,7 +178,7 @@ function CustomerOrderDetails() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Time Slot</p>
-                <p className="font-medium text-navy">{booking.timeSlot || "—"}</p>
+                <p className="font-medium text-navy">{booking.timeSlot || "â€”"}</p>
               </div>
             </div>
 
@@ -353,7 +359,7 @@ function CustomerOrderDetails() {
               {booking.measurements.map((m: any, i: number) => (
                 <div key={i} className="bg-cream/30 p-3 rounded-xl border border-border">
                   <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">{m.label}</p>
-                  <p className="font-medium text-navy">{m.v || "—"}</p>
+                  <p className="font-medium text-navy">{m.v || "â€”"}</p>
                 </div>
               ))}
             </div>

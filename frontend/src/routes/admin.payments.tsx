@@ -109,7 +109,45 @@ function AdminPayments() {
           </div>
         </Card>
 
-        <Card className="p-6 border-gold/60 shadow-luxe">
+        <Card className="p-6 border-gold/60 shadow-luxe mb-6">
+  <div className="flex items-center justify-between mb-4">
+    <h3 className="font-display text-xl text-navy">Pending Withdrawals</h3>
+  </div>
+  <div className="space-y-2">
+    {data.withdrawals?.filter(w => w.status === 'pending').length === 0 ? (
+      <p className="text-sm text-mocha">No pending withdrawals.</p>
+    ) : (
+      data.withdrawals?.filter(w => w.status === 'pending').map((w, i) => (
+        <div key={i} className="flex items-center justify-between p-4 border border-gold/60 rounded-xl bg-white/40">
+          <div>
+            <p className="font-semibold text-navy">{w.tailorName}</p>
+            <p className="text-xs text-mocha">{new Date(w.date).toLocaleString()}</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <p className="font-display text-lg text-rose-600 font-bold">₹{w.amount}</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50 rounded-full" onClick={async () => {
+                try {
+                  await api.put(`/admin/withdrawals/${w.tailorId}/${w._id}/reject`);
+                  const res = await api.get("/admin/payments");
+                  setData(res.data);
+                } catch (e) { alert("Error rejecting withdrawal"); }
+              }}>Reject</Button>
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full" onClick={async () => {
+                try {
+                  await api.put(`/admin/withdrawals/${w.tailorId}/${w._id}/approve`);
+                  const res = await api.get("/admin/payments");
+                  setData(res.data);
+                } catch (e) { alert("Error approving withdrawal"); }
+              }}>Approve</Button>
+            </div>
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+</Card>
+<Card className="p-6 border-gold/60 shadow-luxe">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display text-xl text-navy">Transaction history</h3>
             <Button onClick={downloadReport} variant="outline" size="sm" className="rounded-full gap-2 border-gold/40 text-navy hover:bg-champagne/40">

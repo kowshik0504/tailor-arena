@@ -1,4 +1,4 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
+﻿import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
 import { Search, Bell, LogOut, Crown, ChevronLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -63,9 +63,9 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
       const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
       
       return [
-        { id: "admin_1", title: "New tailor registration", message: "Maison Aarav (Mumbai) — awaiting initial review", time: "8m", type: "verification" },
+        { id: "admin_1", title: "New tailor registration", message: "Maison Aarav (Mumbai) â€” awaiting initial review", time: "8m", type: "verification" },
         { id: "admin_2", title: "Verification request", message: "Studio Kavya uploaded GST & shop photos", time: "1h", type: "verification" },
-        { id: "admin_3", title: "Suspicious activity", message: "Multiple chargebacks on TX-9817 — House of Couture", time: "2h", type: "alert" },
+        { id: "admin_3", title: "Suspicious activity", message: "Multiple chargebacks on TX-9817 â€” House of Couture", time: "2h", type: "alert" },
         { id: "admin_4", title: "Payment failure", message: "Subscription renewal failed for 6 tailors", time: "3h", type: "alert" },
         { id: "admin_5", title: "Freemium expiring", message: "5 freemium tailor trials end today", time: "Today", type: "alert" }
       ].map(n => ({ ...n, read: !!viewed[n.id] })).filter((n: any) => !(viewed[n.id] && Date.now() - viewed[n.id] > TWENTY_FOUR_HOURS));
@@ -104,7 +104,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
               newNotifs.push({
                 id: `${o._id}_cash_${updateTime}`,
                 title: "Cash Payment Verification",
-                message: `${o.customer?.name || 'Customer'} requested to pay ₹${o.amount - (o.baseAmountPaid || 500)} via CASH. Verify for TA-${o._id.slice(-6).toUpperCase()}.`,
+                message: `${o.customer?.name || 'Customer'} requested to pay â‚¹${o.amount - (o.baseAmountPaid || 500)} via CASH. Verify for TA-${o._id.slice(-6).toUpperCase()}.`,
                 time: formatTime(updateTime),
                 orderId: o._id,
                 type: "payment"
@@ -113,7 +113,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
               newNotifs.push({
                 id: `${o._id}_online_${updateTime}`,
                 title: "Online Payment Verification",
-                message: `${o.customer?.name || 'Customer'} paid ₹${o.amount - (o.baseAmountPaid || 500)} via ${(o.paymentMethod || 'online').toUpperCase()}. Verify for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}.`,
+                message: `${o.customer?.name || 'Customer'} paid â‚¹${o.amount - (o.baseAmountPaid || 500)} via ${(o.paymentMethod || 'online').toUpperCase()}. Verify for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}.`,
                 time: formatTime(updateTime),
                 orderId: o._id,
                 type: "payment"
@@ -122,10 +122,10 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
               const isDeliveryToday = o.deliveryDate ? new Date(o.deliveryDate).toDateString() === new Date().toDateString() : false;
               newNotifs.push({
                 id: `${o._id}_cash_${updateTime}`,
-                title: isDeliveryToday ? "🚨 Handover Day: Cash Collection" : "Cash Handover Pending",
+                title: isDeliveryToday ? "ðŸš¨ Handover Day: Cash Collection" : "Cash Handover Pending",
                 message: isDeliveryToday 
-                  ? `TODAY IS HANDOVER DAY: You must receive ₹${o.amount - (o.baseAmountPaid || 500)} cash from ${o.customer?.name || 'Customer'} for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}. Please confirm when you receive it!`
-                  : `${o.customer?.name || 'Customer'} requested to pay ₹${o.amount - (o.baseAmountPaid || 500)} via CASH. Verify for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}.`,
+                  ? `TODAY IS HANDOVER DAY: You must receive â‚¹${o.amount - (o.baseAmountPaid || 500)} cash from ${o.customer?.name || 'Customer'} for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}. Please confirm when you receive it!`
+                  : `${o.customer?.name || 'Customer'} requested to pay â‚¹${o.amount - (o.baseAmountPaid || 500)} via CASH. Verify for ${o.orderId || `TA-${o._id.slice(-6).toUpperCase()}`}.`,
                 time: formatTime(updateTime),
                 orderId: o._id,
                 type: "payment"
@@ -174,7 +174,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
                 id: `${o._id}_cash_update_${o.cashRequestStatus}_${updateTime}`,
                 title: o.cashRequestStatus === 'approved' ? "Payment Received" : "Payment Declined",
                 message: o.cashRequestStatus === 'approved' 
-                  ? `${o.tailor?.user?.name || 'Your tailor'} confirmed receiving your cash payment of ₹${o.amount - (o.baseAmountPaid || 500)}.`
+                  ? `${o.tailor?.user?.name || 'Your tailor'} confirmed receiving your cash payment of â‚¹${o.amount - (o.baseAmountPaid || 500)}.`
                   : `${o.tailor?.user?.name || 'Your tailor'} declined the cash handover request.`,
                 time: formatTime(updateTime),
                 orderId: o._id,
@@ -246,7 +246,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
   const isHome = pathname === meta.homePath || pathname === meta.homePath + "/";
 
   return (
-    <header className="sticky top-0 z-30 glass border-b border-border/50">
+    <header className="sticky top-0 z-30 glass border-b border-border/50 print:hidden">
       <div className="flex items-center gap-4 px-6 py-3">
         <SidebarTrigger className="text-muted-foreground" />
         
@@ -273,7 +273,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search…"
+              placeholder="Searchâ€¦"
               className="pl-9 w-64 bg-background/60 border-border/60 rounded-full h-9"
             />
           </div>
@@ -358,7 +358,7 @@ export function PageShell({
   return (
     <>
       <TopBar title={title} subtitle={subtitle} />
-      <div className="p-6 lg:p-8 space-y-6 animate-in fade-in duration-500">{children}</div>
+      <div className="p-6 lg:p-8 print:p-0 space-y-6 animate-in fade-in duration-500">{children}</div>
     </>
   );
 }

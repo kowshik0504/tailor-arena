@@ -34,7 +34,10 @@ function DummyPayment() {
         if (method === 'cash') {
           await api.put(`/bookings/${search.orderId}/request-cash`);
         } else {
-          await api.put(`/bookings/${search.orderId}/pay-online`, { method });
+          await api.put(`/bookings/${search.orderId}/pay-online`, {
+            method,
+            amount: search.amount,
+          });
         }
       }
       setTimeout(() => {

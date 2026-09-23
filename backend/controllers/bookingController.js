@@ -1,4 +1,4 @@
-const Booking = require('../models/Booking');
+﻿const Booking = require('../models/Booking');
 const TailorProfile = require('../models/TailorProfile');
 const { sendStartWorkEmail, sendSlotUpdateEmail, sendHandoverEmail, sendDelayEmail, sendPaymentFailedEmail } = require('./authController');
 const notificationService = require('../services/notificationService');
@@ -106,6 +106,14 @@ exports.createBooking = async (req, res) => {
       chat: []
     });
 
+    if (paymentMethod === 'online') {
+      booking.paymentStatus = 'paid';
+      const advanceAmount = booking.baseAmountPaid || Math.min(500, booking.amount);
+      tailor.walletBalance = (tailor.walletBalance || 0) + advanceAmount;
+      tailor.earnings = (tailor.earnings || 0) + advanceAmount;
+      await tailor.save();
+    }
+
     await booking.save();
 
     // Handle Freemium Activation Fee on FIRST booking
@@ -114,9 +122,9 @@ exports.createBooking = async (req, res) => {
       if (pastBookings === 1) { // 1 because this booking just got created
         await TailorProfile.updateOne({ _id: tailor._id }, { $set: { activationFeeTriggered: true } });
         console.log(`\n========================================`);
-        console.log(`🔔 FREEMIUM ACTIVATION TRIGGERED!`);
+        console.log(`ðŸ”” FREEMIUM ACTIVATION TRIGGERED!`);
         console.log(`Tailor ID: ${tailorId}`);
-        console.log(`The ₹199 activation fee has been applied since the first booking has arrived.`);
+        console.log(`The â‚¹199 activation fee has been applied since the first booking has arrived.`);
         console.log(`========================================\n`);
       }
     }
@@ -638,12 +646,40 @@ exports.delayHandover = async (req, res) => {
 
 exports.payOnline = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id).populate('tailor');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    booking.paymentMethod = req.body.method || 'online';
-    booking.onlinePaymentStatus = 'pending';
+    
+    const TailorProfileModel = require('../models/TailorProfile');
+    const profileId = booking.tailor._id || booking.tailor;
+    const profile = await TailorProfileModel.findById(profileId);
+    
+    const advanceAmount = booking.baseAmountPaid || Math.min(500, booking.amount);
+    const remainingAmount = booking.amount - advanceAmount;
+    
+    const reqAmount = req.body.amount ? parseFloat(req.body.amount) : null;
+    const isAdvanceRequest = booking.paymentStatus === 'pending';
+    
+    if (isAdvanceRequest) {
+      if (booking.paymentStatus === 'paid') return res.json({ message: 'Advance payment already processed', booking });
+      
+      booking.paymentMethod = req.body.method || 'online';
+      booking.paymentStatus = 'paid';
+      if (profile) {
+        profile.walletBalance = (profile.walletBalance || 0) + advanceAmount;
+        profile.earnings = (profile.earnings || 0) + advanceAmount;
+        await profile.save();
+      }
+    } else {
+      if (booking.onlinePaymentStatus === 'pending' || booking.onlinePaymentStatus === 'approved') {
+        return res.json({ message: 'Final payment already processed', booking });
+      }
+      
+      booking.onlinePaymentStatus = 'pending';
+      booking.paymentMethod = req.body.method || 'online';
+    }
+    
     await booking.save();
-    res.json({ message: 'Online payment initiated', booking });
+    res.json({ message: 'Online payment processed successfully', booking });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -653,15 +689,20 @@ exports.confirmOnlinePayment = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id).populate('tailor');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.onlinePaymentStatus === 'approved') return res.json({ message: 'Already confirmed' });
+    
     booking.onlinePaymentStatus = 'approved';
     booking.paymentStatus = 'paid';
     await booking.save();
     
-    const profile = await require('../models/TailorProfile').findOne({ user: booking.tailor.user });
+    const TailorProfileModel = require('../models/TailorProfile');
+    const profileId = booking.tailor._id || booking.tailor;
+    const profile = await TailorProfileModel.findById(profileId);
+    
     if (profile) {
-      const amount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
-      profile.earnings += amount;
-      profile.walletBalance = (profile.walletBalance || 0) + amount;
+      const remainingAmount = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
+      profile.earnings = (profile.earnings || 0) + remainingAmount;
+      profile.walletBalance = (profile.walletBalance || 0) + remainingAmount;
       await profile.save();
     }
     res.json({ message: 'Online payment confirmed' });
@@ -724,3 +765,23 @@ exports.reportPaymentFailed = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const { buildInvoicePDF } = require("../utils/pdfGenerator");
+const PDFDocument = require("pdfkit");
+
+exports.downloadInvoice = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate("customer").populate("tailor");
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Invoice-${booking.orderId || booking._id}.pdf"`);
+    
+    doc.pipe(res);
+    buildInvoicePDF(booking, doc);
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    res.status(500).json({ message: "Error generating invoice" });
+  }
+};
+

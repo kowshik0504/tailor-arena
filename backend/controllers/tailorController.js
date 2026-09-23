@@ -1,4 +1,4 @@
-const TailorProfile = require('../models/TailorProfile');
+﻿const TailorProfile = require('../models/TailorProfile');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { sendFreemiumEmail } = require('./authController');
@@ -125,10 +125,10 @@ exports.registerOnboarding = async (req, res) => {
       console.error("Failed to parse address:", e);
     }
     
-    // Parse the pin for coordinates if it exists (e.g., "19.0620° N, 72.8273° E")
+    // Parse the pin for coordinates if it exists (e.g., "19.0620Â° N, 72.8273Â° E")
     let coordinates = [0, 0];
     if (parsedAddress.pin) {
-      const match = parsedAddress.pin.match(/([0-9.]+)[°\s]*[NS][,\s]*([0-9.]+)[°\s]*[EW]/i);
+      const match = parsedAddress.pin.match(/([0-9.]+)[Â°\s]*[NS][,\s]*([0-9.]+)[Â°\s]*[EW]/i);
       if (match) {
         coordinates = [parseFloat(match[2]), parseFloat(match[1])]; // [longitude, latitude]
       }
@@ -171,10 +171,10 @@ exports.registerOnboarding = async (req, res) => {
 
     // Send Freemium Welcome Email Mock
     console.log(`\n========================================`);
-    console.log(`📧 WELCOME EMAIL SENT TO: ${email || updatedUser.email}`);
+    console.log(`ðŸ“§ WELCOME EMAIL SENT TO: ${email || updatedUser.email}`);
     console.log(`Subject: Welcome to Tailor Arena - Freemium details`);
     console.log(`Body: Hello ${updatedUser.name}, welcome to Tailor Arena!`);
-    console.log(`Your profile has been created. A ₹199 activation fee will be charged upon your first customer booking.`);
+    console.log(`Your profile has been created. A â‚¹199 activation fee will be charged upon your first customer booking.`);
     console.log(`========================================\n`);
 
     // Save details separately to a local file
@@ -309,7 +309,7 @@ exports.getDashboard = async (req, res) => {
   try {
     const profile = await TailorProfile.findOne({ user: req.user._id })
       .populate('user', 'name email')
-      .populate('wallet.bookingId', 'orderId');
+      ;
     if (!profile) {
       return res.status(404).json({ message: 'Tailor profile not found' });
     }
@@ -389,23 +389,23 @@ exports.getDashboard = async (req, res) => {
         .limit(20);
 
     const activities = allBookings.map(b => {
-        let icon = '📋';
+        let icon = 'ðŸ“‹';
         let text = `New request from ${b.customer?.name || 'Customer'}`;
         
         if (b.status === 'completed') {
-            icon = '✅';
+            icon = 'âœ…';
             text = `Order for ${b.customer?.name} completed`;
         } else if (b.status === 'in-progress') {
-            icon = '🪡';
+            icon = 'ðŸª¡';
             text = `Started work on ${b.customer?.name}'s order`;
         } else if (b.status === 'confirmed') {
-            icon = '📅';
+            icon = 'ðŸ“…';
             text = `Accepted booking for ${b.customer?.name}`;
         } else if (b.status === 'hold') {
-            icon = '⏳';
+            icon = 'â³';
             text = `Put ${b.customer?.name}'s order on hold`;
         } else if (b.paymentStatus === 'paid' && b.status === 'pending') {
-            icon = '💰';
+            icon = 'ðŸ’°';
             text = `Payment received from ${b.customer?.name}`;
         }
 
@@ -447,7 +447,7 @@ exports.getProfile = async (req, res) => {
   try {
     const profile = await TailorProfile.findOne({ user: req.user._id })
       .populate('user', 'name email')
-      .populate('wallet.bookingId', 'orderId');
+      ;
     if (!profile) {
       return res.status(404).json({ message: 'Profile not found' });
     }
@@ -683,7 +683,7 @@ exports.depositToWallet = async (req, res) => {
         finalAmount = amount - 199;
         profile.paid = true;
         profile.activationFeeTriggered = true;
-        console.log(`[Wallet] Deducted ₹199 activation fee from incoming deposit for Tailor ${profile._id}`);
+        console.log(`[Wallet] Deducted â‚¹199 activation fee from incoming deposit for Tailor ${profile._id}`);
       }
     }
 

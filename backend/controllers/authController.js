@@ -1,4 +1,4 @@
-const PDFDocument = require('pdfkit');
+﻿const PDFDocument = require('pdfkit');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const TailorProfile = require('../models/TailorProfile');
@@ -88,7 +88,7 @@ exports.sendFreemiumEmail = async (email, name) => {
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Welcome to Tailor Arena - Your Journey Starts Here! 🧵',
+    subject: 'Welcome to Tailor Arena - Your Journey Starts Here! ðŸ§µ',
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
         <div style="background-color: #2D3436; padding: 30px; text-align: center;">
@@ -105,15 +105,15 @@ exports.sendFreemiumEmail = async (email, name) => {
                 </p>
                 <ul style="color: #2D3436; font-size: 15px; padding-left: 20px; margin-top: 10px;">
                     <li><strong>No Upfront Cost:</strong> Joining and listing your services is completely free.</li>
-                    <li><strong>Activation Fee:</strong> You only pay a one-time activation fee of <strong>₹199</strong> when you receive your <strong>first booking</strong>.</li>
+                    <li><strong>Activation Fee:</strong> You only pay a one-time activation fee of <strong>â‚¹199</strong> when you receive your <strong>first booking</strong>.</li>
                 </ul>
             </div>
 
             <h4 style="margin-bottom: 10px;">Next Steps:</h4>
             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="color: #636E72; font-size: 14px;">
-                <tr><td width="30" style="vertical-align: top; padding-bottom: 10px;">✅</td><td style="padding-bottom: 10px;">Check your dashboard daily for new requests.</td></tr>
-                <tr><td width="30" style="vertical-align: top; padding-bottom: 10px;">✅</td><td style="padding-bottom: 10px;">Add your best stitching rates to attract more customers.</td></tr>
-                <tr><td width="30" style="vertical-align: top; padding-bottom: 10px;">✅</td><td style="padding-bottom: 10px;">When a request arrives, pay the ₹199 fee to unlock customer contact details.</td></tr>
+                <tr><td width="30" style="vertical-align: top; padding-bottom: 10px;">âœ…</td><td style="padding-bottom: 10px;">Check your dashboard daily for new requests.</td></tr>
+                <tr><td width="30" style="vertical-align: top; padding-bottom: 10px;">âœ…</td><td style="padding-bottom: 10px;">Add your best stitching rates to attract more customers.</td></tr>
+                <tr><td width="30" style="vertical-align: top; padding-bottom: 10px;">âœ…</td><td style="padding-bottom: 10px;">When a request arrives, pay the â‚¹199 fee to unlock customer contact details.</td></tr>
             </table>
 
             <div style="text-align: center; margin-top: 40px;">
@@ -147,14 +147,14 @@ exports.sendAcceptanceEmail = async (email, name, tailorName, date, time, bookin
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Your Booking is Accepted! 🧵✨',
+    subject: 'Your Booking is Accepted! ðŸ§µâœ¨',
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #2D3436; padding: 30px; text-align: center;">
             ${fs.existsSync(logoPath) ? '<img src="cid:logo" alt="Tailor Arena" style="max-width: 140px;">' : '<h1 style="color: #fff; margin: 0;">TAILOR ARENA</h1>'}
         </div>
         <div style="padding: 40px; color: #2D3436; text-align: center;">
-            <div style="font-size: 50px; margin-bottom: 20px;">🎉</div>
+            <div style="font-size: 50px; margin-bottom: 20px;">ðŸŽ‰</div>
             <h2 style="margin-top: 0; font-size: 24px; color: #2D3436;">Great news, ${name}!</h2>
             <p style="color: #636E72; font-size: 16px; line-height: 1.6;">Your booking with <strong>${tailorName}</strong> has been <strong>ACCEPTED</strong>. The tailor is ready for your visit!</p>
             
@@ -242,14 +242,14 @@ exports.sendCompletionEmail = async (email, name, tailorName, dressType, amount 
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Your Order is Ready! 👗✨',
+    subject: 'Your Order is Ready! ðŸ‘—âœ¨',
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #2D3436; padding: 30px; text-align: center;">
             ${fs.existsSync(logoPath) ? '<img src="cid:logo" alt="Tailor Arena" style="max-width: 140px;">' : '<h1 style="color: #fff; margin: 0;">TAILOR ARENA</h1>'}
         </div>
         <div style="padding: 40px; color: #2D3436; text-align: center;">
-            <div style="font-size: 50px; margin-bottom: 20px;">👗</div>
+            <div style="font-size: 50px; margin-bottom: 20px;">ðŸ‘—</div>
             <h2 style="margin-top: 0; font-size: 24px;">Great news, ${name}!</h2>
             <p style="color: #636E72; font-size: 16px; line-height: 1.6;">Your <strong>${dressType}</strong> is successfully completed by <strong>${tailorName}</strong> and is ready for pickup/delivery!</p>
             
@@ -259,15 +259,15 @@ exports.sendCompletionEmail = async (email, name, tailorName, dressType, amount 
                 <hr style="border: 0; border-top: 1px solid #C6F6D5; margin: 15px 0;">
                 <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 10px;">
                     <span style="color: #2D3436;">Total Order Amount:</span>
-                    <strong style="color: #2D3436;">₹${amount}</strong>
+                    <strong style="color: #2D3436;">â‚¹${amount}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 10px;">
                     <span style="color: #2D3436;">Base Amount Paid:</span>
-                    <strong style="color: #48BB78;">₹${baseAmountPaid}</strong>
+                    <strong style="color: #48BB78;">â‚¹${baseAmountPaid}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #C6F6D5;">
                     <span style="color: #E53E3E;">Remaining Balance:</span>
-                    <strong style="color: #E53E3E;">₹${remainingAmount}</strong>
+                    <strong style="color: #E53E3E;">â‚¹${remainingAmount}</strong>
                 </div>
             </div>
 
@@ -306,7 +306,7 @@ exports.sendDelayEmail = async (email, name, tailorName, newDate) => {
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Apology: Your Order Delivery is Rescheduled 🧵🙏',
+    subject: 'Apology: Your Order Delivery is Rescheduled ðŸ§µðŸ™',
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #2D3436; padding: 30px; text-align: center;">
@@ -351,14 +351,14 @@ exports.sendStartWorkEmail = async (email, name, tailorName, dressType, tailorId
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Good News: Work Started Early! 🪡✨',
+    subject: 'Good News: Work Started Early! ðŸª¡âœ¨',
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #2D3436; padding: 30px; text-align: center;">
             ${fs.existsSync(logoPath) ? '<img src="cid:logo" alt="Tailor Arena" style="max-width: 140px;">' : '<h1 style="color: #fff; margin: 0;">TAILOR ARENA</h1>'}
         </div>
         <div style="padding: 40px; color: #2D3436; text-align: center;">
-            <div style="font-size: 50px; margin-bottom: 20px;">🪡</div>
+            <div style="font-size: 50px; margin-bottom: 20px;">ðŸª¡</div>
             <h2 style="margin-top: 0; font-size: 24px;">Great News, ${name}!</h2>
             <p style="color: #636E72; font-size: 16px; line-height: 1.6;">The tailor <strong>${tailorName}</strong> was free and has decided to <strong>START WORK EARLY</strong> on your <strong>${dressType}</strong>!</p>
             
@@ -395,7 +395,7 @@ exports.sendSlotUpdateEmail = async (email, name, tailorName, date, time) => {
   await transporter.sendMail({
     from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Booking Slot Updated Successfully! 📅✅',
+    subject: 'Booking Slot Updated Successfully! ðŸ“…âœ…',
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
         <div style="background-color: #2D3436; padding: 30px; text-align: center;">
@@ -508,40 +508,12 @@ exports.sendHandoverEmail = async (booking) => {
     const dressType = booking.dressType;
     const tailorName = booking.tailor.businessName || 'Tailor Arena';
     
-    // Generate PDF Invoice in memory
-    const PDFDocument = require('pdfkit');
-    const doc = new PDFDocument({ margin: 50 });
-    let buffers = [];
-    doc.on('data', buffers.push.bind(buffers));
-    
-    // Write PDF content
-    doc.fontSize(20).text('Tailor Arena - Official Invoice', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Order ID: #${booking._id.toString().slice(-8).toUpperCase()}`);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`);
-    doc.moveDown();
-    
-    doc.fontSize(14).text('Customer Details', { underline: true });
-    doc.fontSize(12).text(`Name: ${name}`);
-    doc.text(`Email: ${email}`);
-    doc.moveDown();
-    
-    doc.fontSize(14).text('Order Details', { underline: true });
-    doc.fontSize(12).text(`Tailor: ${tailorName}`);
-    doc.text(`Dress Type: ${dressType}`);
-    doc.text(`Appointment Slot: ${booking.timeSlot || 'N/A'}`);
-    doc.text(`Handed Over: ${new Date().toLocaleString()}`);
-    doc.moveDown();
-    
-    doc.fontSize(14).text('Payment Breakdown', { underline: true });
-    doc.fontSize(12).text(`Total Amount: INR ${booking.amount}`);
-    doc.text(`Advance Paid: INR ${booking.baseAmountPaid || Math.min(500, booking.amount)} (Mode: Online)`);
-    const remaining = booking.amount - (booking.baseAmountPaid || Math.min(500, booking.amount));
-    doc.text(`Remaining Paid: INR ${remaining} (Mode: ${booking.paymentMethod ? booking.paymentMethod.toUpperCase() : 'ONLINE'})`);
-    doc.moveDown();
-    doc.fontSize(14).text('Thank you for choosing Tailor Arena!', { align: 'center' });
-    
-    doc.end();
+    const { buildInvoicePDF } = require("../utils/pdfGenerator");
+      const PDFDocument = require("pdfkit");
+      const doc = new PDFDocument({ margin: 50 });
+      let buffers = [];
+      doc.on("data", buffers.push.bind(buffers));
+      buildInvoicePDF(booking, doc);
 
     const pdfBuffer = await new Promise((resolve) => {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
@@ -583,7 +555,7 @@ exports.sendDelayEmail = async (email, name, dressType, tailorName, reason, expe
     await transporter.sendMail({
       from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Update regarding your order delivery 🕒',
+      subject: 'Update regarding your order delivery ðŸ•’',
       html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <h2 style="color: #E67E22; text-align: center;">Delivery Delayed</h2>
@@ -1024,7 +996,7 @@ exports.sendPaymentFailedEmail = async (email, name, orderId, method, reason, am
     await transporter.sendMail({
       from: `"Tailor Arena" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Payment Failed - Action Required ⚠️',
+      subject: 'Payment Failed - Action Required âš ï¸',
       html: `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
           <div style="background-color: #2D3436; padding: 30px; text-align: center;">

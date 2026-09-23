@@ -1,4 +1,4 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+﻿import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Ruler, Scissors, Sparkles,
   CalendarDays, Bell, BarChart3, Settings, LogOut,
@@ -136,7 +136,7 @@ export function AppSidebar() {
     "text-[10px] uppercase tracking-[0.28em] text-mocha/60 font-medium px-3";
 
   return (
-    <Sidebar collapsible="icon" className={`border-r border-border/60 ${surface}`}>
+    <Sidebar collapsible="icon" className={`border-r border-border/60 print:hidden ${surface}`}>
       <SidebarHeader className="px-3 py-4 border-b border-border/60">
         <div className="flex items-center gap-3 px-1">
           <div className="h-11 w-11 rounded-2xl flex items-center justify-center shadow-luxe bg-cream gold-border">
@@ -147,7 +147,7 @@ export function AppSidebar() {
               Tailor Arena
             </span>
             <span className="text-[9px] uppercase tracking-[0.32em] text-mocha/70">
-              Precision · Style · Stitching
+              Precision Â· Style Â· Stitching
             </span>
           </div>
         </div>

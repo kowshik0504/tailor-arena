@@ -42,16 +42,18 @@ function TailorWallet() {
         
         bookingsRes.data.forEach((b: any) => {
           // 1. Advance Payment (Base Amount) - Online
-          activities.push({
-            type: 'online_payment',
-            id: b._id + '_base',
-            bookingId: b._id,
-            date: b.createdAt,
-            amount: b.baseAmountPaid || Math.min(500, b.amount),
-            status: 'completed',
-            customer: b.customer?.name || "Customer",
-            label: "Advance Payment"
-          });
+          if (b.paymentStatus === 'paid') {
+            activities.push({
+              type: 'online_payment',
+              id: b._id + '_base',
+              bookingId: b._id,
+              date: b.createdAt,
+              amount: b.baseAmountPaid || Math.min(500, b.amount),
+              status: 'completed',
+              customer: b.customer?.name || "Customer",
+              label: "Advance Payment"
+            });
+          }
 
           const remaining = b.amount - (b.baseAmountPaid || Math.min(500, b.amount));
 
@@ -85,19 +87,6 @@ function TailorWallet() {
               label: "Cash Handover"
             });
           } 
-          // 3. Online Payment (Remaining)
-          else if (b.paymentStatus === 'paid') {
-            activities.push({
-              type: 'online_payment',
-              id: b._id + '_final',
-              bookingId: b._id,
-              date: b.updatedAt || b.createdAt,
-              amount: remaining,
-              status: 'completed',
-              customer: b.customer?.name || "Customer",
-              label: "Final Payment"
-            });
-          }
         });
         
         setPayments(activities);
@@ -150,7 +139,7 @@ function TailorWallet() {
 
   const handleOnlineAction = async (orderId: string, action: 'confirm-online' | 'reject-online') => {
     try {
-      await api.put(`/bookings//`);
+      await api.put(`/bookings/${orderId}/${action}`);
       fetchProfile();
     } catch (e) {
       console.error(e);
@@ -166,9 +155,22 @@ function TailorWallet() {
     }
   };
 
-  const paymentHistory = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const recentActivities = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover' || p.type === 'online_payment')]
+    const sortedDesc = [...withdrawals.map(w => ({ ...w, type: 'withdrawal' })), ...payments.filter(p => p.type === 'cash_handover' || p.type === 'online_payment')]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  let currentRunBal = balance;
+  const activitiesWithBalance = sortedDesc.map(act => {
+    const balForThisAct = currentRunBal;
+    if (act.type === 'withdrawal' && act.status !== 'rejected' && act.status !== 'failed') {
+      currentRunBal += parseFloat(act.amount || 0);
+    } else if (act.status === 'completed' || act.status === 'paid' || act.status === 'approved') {
+      currentRunBal -= parseFloat(act.amount || 0);
+    }
+    return { ...act, runningBalance: balForThisAct };
+  });
+
+  const recentActivities = activitiesWithBalance;
+  const paymentHistory = activitiesWithBalance;
 
   return (
     <PageShell title="Tailor Wallet" subtitle="Manage your earnings and withdrawals.">
@@ -277,11 +279,16 @@ function TailorWallet() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-sm font-bold ${w.type === 'withdrawal' ? 'text-navy' : 'text-emerald-700'}`}>{w.type === 'withdrawal' ? '-' : '+'}₹{w.amount}</p>
-                        <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' || w.status === 'approved' ? 'text-emerald-600' : w.status === 'failed' || w.status === 'rejected' ? 'text-rose-600' : 'text-amber-600'}`}>
-                          {w.status === 'pending' && w.type === 'cash_handover' ? 'Pending Approval' : w.status}
-                        </p>
-                      </div>
+                          <p className={`text-sm font-bold ${w.type === 'withdrawal' ? 'text-navy' : 'text-emerald-700'}`}>{w.type === 'withdrawal' ? '-' : '+'}₹{w.amount}</p>
+                          <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' || w.status === 'approved' ? 'text-emerald-600' : w.status === 'failed' || w.status === 'rejected' ? 'text-rose-600' : 'text-amber-600'}`}>
+                            {w.status === 'pending' && w.type === 'cash_handover' ? 'Pending Approval' : w.status}
+                          </p>
+                          {typeof w.runningBalance !== 'undefined' && (
+                            <p className="text-[10px] text-mocha font-medium mt-0.5">
+                              Bal: ₹{w.runningBalance}
+                            </p>
+                          )}
+                        </div>
                     </div>
                   </div>
                 ))
@@ -317,11 +324,16 @@ function TailorWallet() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-bold ${w.type === 'withdrawal' ? 'text-navy' : 'text-emerald-700'}`}>{w.type === 'withdrawal' ? '-' : '+'}₹{w.amount}</p>
-                      <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' || w.status === 'approved' ? 'text-emerald-600' : w.status === 'failed' || w.status === 'rejected' ? 'text-rose-600' : 'text-amber-600'}`}>
-                        {w.status === 'pending' && w.type === 'cash_handover' ? 'Pending Approval' : w.status}
-                      </p>
-                    </div>
+                          <p className={`text-sm font-bold ${w.type === 'withdrawal' ? 'text-navy' : 'text-emerald-700'}`}>{w.type === 'withdrawal' ? '-' : '+'}₹{w.amount}</p>
+                          <p className={`text-[10px] capitalize font-medium ${w.status === 'completed' || w.status === 'approved' ? 'text-emerald-600' : w.status === 'failed' || w.status === 'rejected' ? 'text-rose-600' : 'text-amber-600'}`}>
+                            {w.status === 'pending' && w.type === 'cash_handover' ? 'Pending Approval' : w.status}
+                          </p>
+                          {typeof w.runningBalance !== 'undefined' && (
+                            <p className="text-[10px] text-mocha font-medium mt-0.5">
+                              Bal: ₹{w.runningBalance}
+                            </p>
+                          )}
+                        </div>
                   </div>
                   {w.isOnlineRequest && (
                     <div className="flex items-center gap-2 mt-1">

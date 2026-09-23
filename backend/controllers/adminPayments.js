@@ -90,7 +90,8 @@ exports.getPaymentsData = async (req, res) => {
         completedWeek: completedWeekCount
       },
       flow,
-      txns: txns
+      txns: txns,
+      withdrawals: (await TailorProfile.find({ "withdrawals.0": { $exists: true } }).populate("user", "name")).flatMap(t => t.withdrawals.map(w => ({ _id: w._id, tailorId: t._id, tailorName: t.shopName || t.user?.name, amount: w.amount, status: w.status, date: w.date })))
     });
   } catch (err) {
     console.error(err);

@@ -233,11 +233,23 @@ function Orders() {
                     className={`p-4 border-gold/60 shadow-luxe transition-all ${isCompleted ? 'cursor-pointer hover:shadow-md' : 'hover:shadow-glow hover:-translate-y-0.5 cursor-grab active:cursor-grabbing'}`}
                   >
                     <div className="flex items-start justify-between">
-                    <Badge className={`rounded-full text-[10px] uppercase tracking-wider ${priorityTint[item.priority]}`}>
-                      {item.priority}
-                    </Badge>
-                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                  </div>
+                      <Badge className={`rounded-full text-[10px] uppercase tracking-wider ${priorityTint[item.priority]}`}>
+                        {item.priority}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {item.status === 'Pending' && (
+                          <Button size="sm" className="h-6 px-2 text-[10px] rounded-full bg-foreground text-background hover:bg-foreground/90" onClick={(e) => { e.stopPropagation(); moveTo(item.id, 'Accepted'); }}>
+                            Accept
+                          </Button>
+                        )}
+                        {item.status === 'Accepted' && (
+                          <Button size="sm" className="h-6 px-2 text-[10px] rounded-full bg-foreground text-background hover:bg-foreground/90" onClick={(e) => { e.stopPropagation(); moveTo(item.id, 'In Stitching'); }}>
+                            Stitching
+                          </Button>
+                        )}
+                        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
                   <p className="font-display text-base mt-3">{item.garment}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {item.customer} · {item.orderId || (item.id.startsWith('TA-') ? item.id : `TA-${item.id.slice(-6).toUpperCase()}`)}

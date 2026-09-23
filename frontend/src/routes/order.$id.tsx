@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, Clock, Check, X, AlertCircle, Phone, Mail, User, Image as ImageIcon, Ruler, Scissors, Banknote, ArrowLeft, Loader2, PackageCheck } from "lucide-react";
+import { CalendarDays, Clock, Check, X, AlertCircle, Phone, Mail, User, Image as ImageIcon, Ruler, Scissors, Banknote, ArrowLeft, CreditCard, Printer, Loader2, PackageCheck } from "lucide-react";
 import api from "@/lib/api";
 
 export const Route = createFileRoute("/order/$id")({
@@ -172,15 +172,35 @@ function OrderDetails() {
   return (
     <PageShell title={`Booking Details`} subtitle={`Order #${order.orderId || order._id?.slice(-8).toUpperCase()}`}>
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Print Only Invoice Header */}
+        <div className="hidden print:block text-center space-y-1 mb-8 pt-8">
+          <h1 className="font-display text-3xl text-navy font-bold tracking-[0.15em] mb-3">INVOICE</h1>
+          <p className="text-xs text-mocha uppercase tracking-widest">{order.tailor?.shopName || "TAILOR ARENA"}</p>
+          <p className="text-sm text-navy mt-1">Order #{order.orderId || order._id?.slice(-8).toUpperCase()}</p>
+          <p className="text-[10px] text-mocha">Printed on {new Date().toLocaleDateString()}</p>
+        </div>
+
         
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          className="text-mocha hover:text-navy -ml-2 mb-2"
-          onClick={() => navigate({ to: "/orders" })}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Orders
-        </Button>
+        {/* Header Actions */}
+        <div className="flex items-center justify-between mb-2 print:hidden">
+          <Button
+            variant="ghost"
+            className="text-mocha hover:text-navy -ml-2"
+            onClick={() => navigate({ to: "/orders" })}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Orders
+          </Button>
+          
+          <Button 
+            variant="outline"
+            className="border-gold/40 text-navy hover:bg-gold/10 rounded-xl"
+            onClick={() => {
+              window.open(`http://localhost:5000/api/bookings/${id}/invoice?token=${sessionStorage.getItem('tailorarena_token')}`, '_blank');
+            }}
+          >
+            Download Invoice PDF
+          </Button>
+        </div>
 
         {/* Header / Status Line */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white rounded-2xl shadow-luxe border border-gold/40">
@@ -305,7 +325,7 @@ function OrderDetails() {
                   {order.measurements.map((m: any, i: number) => (
                     <div key={i} className="bg-cream/30 p-3 rounded-xl border border-border">
                       <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">{m.label}</p>
-                      <p className="font-medium text-navy">{m.v || "—"}</p>
+                      <p className="font-medium text-navy">{m.v || "â€”"}</p>
                     </div>
                   ))}
                 </div>
@@ -343,16 +363,61 @@ function OrderDetails() {
             </Card>
 
             {/* Payment Details */}
-            <Card className="p-6 shadow-sm border-gold/20">
-              <h3 className="font-display text-lg text-navy mb-4 flex items-center gap-2"><Banknote className="h-5 w-5 text-emerald-600" /> Payment</h3>
-              <div className="space-y-3">
-                <DetailItem label="Amount" value={`₹${order.amount || 0}`} valueClass="text-lg font-bold text-navy" />
-                <DetailItem label="Payment Status" value={order.paymentStatus === 'paid' ? 'Paid' : 'Pending'} valueClass={order.paymentStatus === 'paid' ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'} />
-                <DetailItem label="Payment Method" value={order.paymentMethod ? order.paymentMethod.replace("_", " ").toUpperCase() : "Online"} />
+            <Card className="p-6 border-gold/60 shadow-luxe print:shadow-none print:border-0 print:p-0">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-display text-lg text-navy flex items-center gap-2"><CreditCard className="h-5 w-5 text-emerald-600 print:hidden" /> Payment Breakdown</h3>
+                <Button size="sm" variant="outline" className="text-xs h-7 rounded-full print:hidden" onClick={() => window.print()}>
+                  <Printer className="h-3 w-3 mr-1" /> Print / Download
+                </Button>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-6 print:grid-cols-2">
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0 print:hidden">
+                    <CreditCard className="h-4 w-4 text-navy" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Total Amount</p>
+                    <p className="font-display text-xl text-navy">₹{order.amount || 0}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0 print:hidden">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-emerald-600 mb-1">Advance Paid</p>
+                    <p className="font-display text-xl text-emerald-600">₹{order.baseAmountPaid || Math.min(500, order.amount)}</p>
+                    <p className="text-xs text-mocha">Online</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3 border-t border-gold/20 pt-4">
+                  <div className="h-9 w-9 rounded-lg bg-rose-50 flex items-center justify-center shrink-0 print:hidden">
+                    <CreditCard className="h-4 w-4 text-rose-600" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-rose-600 mb-1">Remaining Balance</p>
+                    <p className="font-display text-xl text-rose-600">₹{order.amount - (order.baseAmountPaid || Math.min(500, order.amount))}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 border-t border-gold/20 pt-4">
+                  <div className="h-9 w-9 rounded-lg bg-champagne/50 flex items-center justify-center shrink-0 print:hidden">
+                    <Check className="h-4 w-4 text-navy" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-mocha mb-1">Remaining Status</p>
+                    <Badge className={`rounded-full ${order.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {(order.paymentStatus || "pending").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                    </Badge>
+                    {order.paymentStatus === 'paid' && order.paymentMethod && (
+                      <p className="text-xs text-mocha mt-1">Paid via {order.paymentMethod.toUpperCase()}</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {order.cashRequestStatus === 'pending' && (
-                <div className="mt-6 pt-4 border-t border-gold/20">
+                <div className="mt-6 pt-4 border-t border-gold/20 print:hidden">
                   <p className="text-sm font-medium text-navy mb-3">Customer handed over cash?</p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => handleCashAction('reject')}><X className="h-4 w-4 mr-2" /> No</Button>
@@ -362,7 +427,7 @@ function OrderDetails() {
               )}
 
               {order.onlinePaymentStatus === 'pending' && (
-                <div className="mt-6 pt-4 border-t border-gold/20">
+                <div className="mt-6 pt-4 border-t border-gold/20 print:hidden">
                   <p className="text-sm font-medium text-navy mb-3">Customer paid online. Did you receive it in your bank?</p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => handleOnlineAction('reject-online')}><X className="h-4 w-4 mr-2" /> No</Button>
