@@ -36,6 +36,7 @@ router.post('/wallet/withdraw', protect, tailorOnly, tailorController.withdrawFr
 router.get('/nearby', tailorController.getNearby);
 router.get('/all', tailorController.getAllTailors);
 router.get('/:id', tailorController.getTailorById);
+router.put('/:id/designs/:designId/view', tailorController.incrementDesignView);
 
 router.get('/debug-docs', async (req, res) => {
   const TailorProfile = require('../models/TailorProfile');

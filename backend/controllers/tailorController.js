@@ -1,4 +1,4 @@
-﻿const TailorProfile = require('../models/TailorProfile');
+const TailorProfile = require('../models/TailorProfile');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { sendFreemiumEmail } = require('./authController');
@@ -446,8 +446,7 @@ exports.getDashboard = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const profile = await TailorProfile.findOne({ user: req.user._id })
-      .populate('user', 'name email')
-      ;
+      .populate('user', 'name email');
     if (!profile) {
       return res.status(404).json({ message: 'Profile not found' });
     }
@@ -510,7 +509,7 @@ exports.updateProfile = async (req, res) => {
       return res.status(404).json({ message: 'Profile not found' });
     }
 
-    const { shopName, address, phone, shopNumber, houseDetails, isPaused, services, designs, maxWeeklyOrders, workingDays } = req.body;
+    const { shopName, address, phone, shopNumber, houseDetails, isPaused, services, designs, maxWeeklyOrders, workingDays, completedWorks } = req.body;
     
     if (typeof isPaused === 'boolean') {
       profile.isPaused = isPaused;
@@ -526,6 +525,9 @@ exports.updateProfile = async (req, res) => {
     }
     if (designs !== undefined) {
       profile.designs = designs;
+    }
+    if (completedWorks !== undefined) {
+      profile.completedWorks = completedWorks;
     }
 
     // Instead of updating directly, store in pendingFields
@@ -769,5 +771,16 @@ exports.resubmitVerification = async (req, res) => {
   }
 };
 
-
-
+exports.incrementDesignView = async (req, res) => {
+  try {
+    const profile = await TailorProfile.findById(req.params.id);
+    if (!profile) return res.status(404).json({ message: 'Tailor not found' });
+    const design = profile.designs.id(req.params.designId);
+    if (!design) return res.status(404).json({ message: 'Design not found' });
+    design.views += 1;
+    await profile.save();
+    res.json({ success: true, views: design.views });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

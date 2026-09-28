@@ -32,8 +32,30 @@ const designSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String, default: '' },
   image: { type: String, default: '' },
-  featured: { type: Boolean, default: false }
+  featured: { type: Boolean, default: false },
+  category: { type: String, default: 'Custom Designs' },
+  price: { type: Number, default: 0 },
+  delivery: { type: Number, default: 7 },
+  orders: { type: Number, default: 0 },
+  rating: { type: Number, default: 0 },
+  saves: { type: Number, default: 0 },
+  views: { type: Number, default: 0 },
+  fabric: { type: String, default: '' },
+  difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard', 'Expert'], default: 'Medium' },
+  notes: { type: String, default: '' },
+  trending: { type: Boolean, default: false },
+  hidden: { type: Boolean, default: false },
+  gradient: { type: String, default: 'bg-gradient-cream' },
+  height: { type: String, default: 'h-80' }
 });
+
+const completedWorkSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  tag: { type: String, default: '' },
+  image: { type: String, default: '' },
+  g: { type: String, default: 'bg-gradient-gold' },
+  h: { type: String, default: 'h-80' }
+}, { timestamps: true });
 
 const tailorProfileSchema = new mongoose.Schema({
   user: {
@@ -114,6 +136,7 @@ const tailorProfileSchema = new mongoose.Schema({
   }],
   services: [serviceSchema],
   designs: [designSchema],
+  completedWorks: [completedWorkSchema],
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
   earnings: { type: Number, default: 0 },

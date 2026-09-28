@@ -56,8 +56,6 @@ const GRADIENTS = ["bg-gradient-cream", "bg-gradient-rose", "bg-gradient-luxe", 
 const HEIGHTS = ["h-64", "h-72", "h-80", "h-96"];
 
 const seed: Design[] = [];
-const requests: any[] = [];
-const initialCompleted: any[] = [];
 
 import api from "@/lib/api";
 
@@ -65,15 +63,25 @@ function Catalog() {
   const [designs, setDesigns] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [completed, setCompleted] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await api.get('/tailors/profile');
+        if (res.data) {
+          setProfile(res.data);
+        }
         if (res.data?.designs) {
-          setDesigns(res.data.designs);
+          setDesigns(res.data.designs.map((d: any) => ({ ...d, id: d._id || d.id })));
+        }
+        if (res.data?.completedWorks) {
+          setCompleted(res.data.completedWorks.map((c: any) => ({ ...c, id: c._id || c.id })));
         }
       } catch (err) {
-        console.error("Failed to fetch designs", err);
+        console.error("Failed to fetch profile", err);
       } finally {
         setLoading(false);
       }
@@ -81,24 +89,60 @@ function Catalog() {
     fetchProfile();
   }, []);
 
-  const [completed, setCompleted] = useState<any[]>(() => {
-    if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('tailor_completed');
-      if (cached) return JSON.parse(cached);
-    }
-    return initialCompleted;
-  });
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('tailor_completed', JSON.stringify(completed));
+    const fetchBookings = async () => {
+      try {
+        const res = await api.get('/bookings/tailor');
+        const pendingBookings = res.data.filter((b: any) => ['pending', 'accepted'].includes(b.status));
+        const formattedRequests = pendingBookings.map((b: any) => ({
+          id: b._id,
+          customer: b.customer?.name || "Unknown Customer",
+          time: new Date(b.createdAt).toLocaleDateString(),
+          note: b.notes || "No notes provided.",
+          type: b.dressType || "Design",
+          img: b.designImg || "bg-gradient-soft",
+          booking: b
+        }));
+        setRequests(formattedRequests);
+      } catch (err) {
+        console.error("Failed to fetch bookings", err);
+      }
+    };
+    fetchBookings();
+  }, []);
+
+  const handleAddCompletedWork = async (newWork: any) => {
+    const updated = [newWork, ...completed];
+    setCompleted(updated);
+    try {
+      const payload = updated.map((c: any) => {
+        const { id, ...rest } = c;
+        return id.startsWith('cw') ? rest : { ...rest, _id: id };
+      });
+      const res = await api.put('/tailors/profile', { completedWorks: payload });
+      if (res.data?.profile?.completedWorks) {
+        setCompleted(res.data.profile.completedWorks.map((c: any) => ({ ...c, id: c._id })));
+      }
+    } catch (e) {
+      console.error(e);
     }
-  }, [completed]);
+  };
+
+  const handleBookingAction = async (id: string, action: string) => {
+    try {
+      await api.put(`/bookings/${id}/${action}`);
+      setRequests(reqs => reqs.filter(r => r.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [sort, setSort] = useState("popular");
   const [openUpload, setOpenUpload] = useState(false);
   const [openAddCompleted, setOpenAddCompleted] = useState(false);
+  const [activeTab, setActiveTab] = useState("designs");
   const [editing, setEditing] = useState<Design | null>(null);
   const [detail, setDetail] = useState<Design | null>(null);
 
@@ -128,39 +172,57 @@ function Catalog() {
   }, [designs]);
 
   const upsert = async (d: Design) => {
-    let updated: Design[] = [];
-    setDesigns((arr) => {
-      const i = arr.findIndex((x) => x.id === d.id);
-      if (i >= 0) { 
-        const c = [...arr]; c[i] = d; 
-        updated = c;
-        return c; 
-      }
-      updated = [d, ...arr];
-      return updated;
-    });
-    // Fire and forget update
-    if (updated.length > 0) api.put('/tailors/profile', { designs: updated });
+    const i = designs.findIndex((x) => x.id === d.id);
+    let updated = [...designs];
+    if (i >= 0) { 
+      updated[i] = d;
+    } else {
+      updated = [d, ...designs];
+    }
+    
+    setDesigns(updated);
+
+    if (updated.length > 0) {
+      const payload = updated.map((d: any) => {
+        const { id, ...rest } = d;
+        // Avoid stripping valid mongo _id that happens to start with d. 
+        // We know local IDs start with "d" followed by digits (d1712...).
+        const isLocal = id && id.toString().match(/^d\d+$/);
+        return isLocal ? rest : { ...rest, _id: id };
+      });
+      try {
+        const res = await api.put('/tailors/profile', { designs: payload });
+        if (res.data?.profile?.designs) {
+          setDesigns(res.data.profile.designs.map((x: any) => ({ ...x, id: x._id })));
+        }
+      } catch (err) { console.error(err); }
+    }
   };
 
   const remove = async (id: string) => {
-    let updated: Design[] = [];
-    setDesigns((a) => {
-      updated = a.filter((d) => d.id !== id);
-      return updated;
+    const updated = designs.filter((d) => d.id !== id);
+    setDesigns(updated);
+    
+    const payload = updated.map((d: any) => {
+      const { id, ...rest } = d;
+      const isLocal = id && id.toString().match(/^d\d+$/);
+      return isLocal ? rest : { ...rest, _id: id };
     });
-    api.put('/tailors/profile', { designs: updated });
+    api.put('/tailors/profile', { designs: payload });
   };
 
   const duplicate = (d: Design) => upsert({ ...d, id: `d${Date.now()}`, name: `${d.name} (Copy)`, orders: 0, saves: 0, views: 0 });
   
   const toggle = async (id: string, key: keyof Design) => {
-    let updated: Design[] = [];
-    setDesigns((a) => {
-      updated = a.map((d) => d.id === id ? { ...d, [key]: !d[key] } : d);
-      return updated;
+    const updated = designs.map((d) => d.id === id ? { ...d, [key]: !d[key] } : d);
+    setDesigns(updated);
+    
+    const payload = updated.map((d: any) => {
+      const { id, ...rest } = d;
+      const isLocal = id && id.toString().match(/^d\d+$/);
+      return isLocal ? rest : { ...rest, _id: id };
     });
-    api.put('/tailors/profile', { designs: updated });
+    api.put('/tailors/profile', { designs: payload });
   };
 
   return (
@@ -176,7 +238,7 @@ function Catalog() {
         </Button>
       </div>
 
-      <Tabs defaultValue="designs" className="space-y-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
         <TabsList className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-full p-1 h-auto relative z-10">
           <TabsTrigger value="designs" className="group rounded-full data-[state=active]:bg-navy/90 data-[state=active]:backdrop-blur-md data-[state=active]:shadow-md data-[state=active]:text-cream px-4 transition-all">Designs</TabsTrigger>
           <TabsTrigger value="requests" className="group rounded-full data-[state=active]:bg-navy/90 data-[state=active]:backdrop-blur-md data-[state=active]:shadow-md data-[state=active]:text-cream px-4 transition-all">Requests <Badge className="ml-2 bg-navy/10 text-navy group-data-[state=active]:bg-white/20 group-data-[state=active]:text-cream h-4 px-1.5 text-[10px] backdrop-blur-sm border-0">{requests.length}</Badge></TabsTrigger>
@@ -216,7 +278,8 @@ function Catalog() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtered.map((d) => (
               <Card key={d.id} className="overflow-hidden border-gold/60 shadow-luxe group flex flex-col">
-                <button onClick={() => setDetail(d)} className={`relative ${d.gradient} h-80 text-left bg-cover bg-center`} style={d.image ? { backgroundImage: `url(${d.image})` } : {}}>
+                <button onClick={() => setDetail(d)} className={`relative ${d.gradient} h-80 text-left overflow-hidden`}>
+                  {d.image && <img src={d.image} className="absolute inset-0 w-full h-full object-cover" alt={d.name} />}
                   <div className="absolute inset-0 bg-black/20" />
                   <div className="absolute top-3 left-3 flex gap-1.5 z-10">
                     {d.featured && <Badge className="bg-gradient-gold text-navy border-0 text-[10px] gap-1"><Award className="h-3 w-3" />Featured</Badge>}
@@ -273,7 +336,8 @@ function Catalog() {
           <div className="grid md:grid-cols-2 gap-4">
             {requests.map((r) => (
               <Card key={r.id} className="overflow-hidden border-gold/60 shadow-luxe">
-                <div className={`${r.img} h-44 relative`}>
+                <div className="h-44 relative bg-cover bg-center bg-gray-100" style={r.img.includes('data:image') || r.img.includes('http') || r.img.includes('/') ? { backgroundImage: `url(${r.img})` } : {}}>
+                  {!(r.img.includes('data:image') || r.img.includes('http') || r.img.includes('/')) && <div className={`absolute inset-0 ${r.img}`} />}
                   <Badge className="absolute top-3 left-3 bg-white/90 text-navy border-0 text-[10px]">{r.type} reference</Badge>
                 </div>
                 <div className="p-4 space-y-3">
@@ -283,10 +347,8 @@ function Catalog() {
                   </div>
                   <p className="text-sm text-mocha">{r.note}</p>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button size="sm" className="rounded-full bg-gradient-navy text-cream gap-1 h-8"><CircleCheck className="h-3.5 w-3.5" />Accept</Button>
-                    <Button size="sm" variant="outline" className="rounded-full h-8 gap-1 border-navy/20 text-navy hover:bg-secondary"><IndianRupee className="h-3.5 w-3.5" />Send Quote</Button>
-                    <Button size="sm" variant="outline" className="rounded-full h-8 gap-1 border-navy/20 text-navy hover:bg-secondary"><Sparkles className="h-3.5 w-3.5" />Suggest Similar</Button>
-                    <Button size="sm" variant="ghost" className="rounded-full h-8 gap-1 text-red-600 hover:bg-red-50"><CircleX className="h-3.5 w-3.5" />Reject</Button>
+                    <Button size="sm" onClick={() => handleBookingAction(r.id, 'accept')} className="rounded-full bg-gradient-navy text-cream gap-1 h-8"><CircleCheck className="h-3.5 w-3.5" />Accept</Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleBookingAction(r.id, 'reject')} className="rounded-full h-8 gap-1 text-red-600 hover:bg-red-50"><CircleX className="h-3.5 w-3.5" />Reject</Button>
                   </div>
                 </div>
               </Card>
@@ -344,10 +406,16 @@ function Catalog() {
       <AddCompletedDialog 
         open={openAddCompleted} 
         onOpenChange={setOpenAddCompleted} 
-        onSave={(newWork) => setCompleted([newWork, ...completed])} 
+        onSave={handleAddCompletedWork} 
       />
       <UploadDialog open={openUpload} onOpenChange={setOpenUpload} initial={editing} onSave={upsert} />
-      <DetailDialog design={detail} onClose={() => setDetail(null)} onEdit={(d) => { setDetail(null); setEditing(d); setOpenUpload(true); }} />
+      <DetailDialog 
+        design={detail} 
+        profile={profile} 
+        onClose={() => setDetail(null)} 
+        onEdit={(d) => { setDetail(null); setEditing(d); setOpenUpload(true); }}
+        onViewAnalytics={() => { setDetail(null); setActiveTab("analytics"); }}
+      />
     </PageShell>
   );
 }
@@ -365,8 +433,9 @@ function HighlightCard({ title, design, metric, icon }: { title: string; design:
   if (!design) return null;
   return (
     <Card className="overflow-hidden border-gold/60 shadow-luxe">
-      <div className={`${design.gradient} h-32 relative`}>
-        <div className="absolute top-2 left-2"><Badge className="bg-white/90 text-navy border-0 text-[10px] gap-1">{icon}{title}</Badge></div>
+      <div className={`${design.gradient} h-32 relative overflow-hidden`}>
+        {design.image && <img src={design.image} className="absolute inset-0 w-full h-full object-cover" alt={design.name} />}
+        <div className="absolute top-2 left-2 z-10"><Badge className="bg-white/90 text-navy border-0 text-[10px] gap-1">{icon}{title}</Badge></div>
       </div>
       <div className="p-4 bg-white/60">
         <p className="font-display text-navy">{design.name}</p>
@@ -444,7 +513,7 @@ function UploadDialog({ open, onOpenChange, initial, onSave }: { open: boolean; 
   );
 }
 
-function DetailDialog({ design, onClose, onEdit }: { design: Design | null; onClose: () => void; onEdit: (d: Design) => void }) {
+function DetailDialog({ design, profile, onClose, onEdit, onViewAnalytics }: { design: Design | null; profile: any; onClose: () => void; onEdit: (d: Design) => void; onViewAnalytics?: () => void }) {
   if (!design) return null;
   return (
     <Dialog open={!!design} onOpenChange={(o) => !o && onClose()}>
@@ -455,7 +524,9 @@ function DetailDialog({ design, onClose, onEdit }: { design: Design | null; onCl
         </DialogHeader>
         <div className="grid md:grid-cols-2 gap-5">
           <div className="space-y-2">
-            <div className={`${design.gradient} h-72 rounded-xl shadow-luxe bg-cover bg-center`} style={design.image ? { backgroundImage: `url(${design.image})` } : {}} />
+            <div className={`${design.gradient} rounded-xl shadow-luxe overflow-hidden`}>
+              {design.image && <img src={design.image} className="w-full h-auto max-h-[70vh] object-contain" alt="Detail" />}
+            </div>
             <div className="grid grid-cols-4 gap-2">
               {GRADIENTS.slice(0, 4).map((g, i) => <div key={i} className={`${g} h-16 rounded-lg`} />)}
             </div>
@@ -482,17 +553,22 @@ function DetailDialog({ design, onClose, onEdit }: { design: Design | null; onCl
             )}
             <Card className="p-3 bg-white/70 border-gold/60">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-gold flex items-center justify-center font-display text-navy-deep">AK</div>
+                <div className="h-10 w-10 rounded-full bg-gradient-gold flex items-center justify-center font-display text-navy-deep">
+                  {profile?.user?.name ? profile.user.name.substring(0, 2).toUpperCase() : "TL"}
+                </div>
                 <div>
-                  <p className="font-display text-navy text-sm">Aarav Kapoor · Maison Aarav</p>
-                  <p className="text-[11px] text-mocha">⭐ 4.9 · 12 yrs experience · 340 orders completed</p>
+                  <p className="font-display text-navy text-sm">
+                    {profile?.user?.name || "Tailor Name"} {profile?.shopName ? `· ${profile.shopName}` : ""}
+                  </p>
+                  <p className="text-[11px] text-mocha">
+                    ⭐ {profile?.rating || 0} · {profile?.reviewCount || 0} reviews · {profile?.completedWorks?.length || 0} orders completed
+                  </p>
                 </div>
               </div>
             </Card>
             <div className="flex flex-wrap gap-2 pt-2">
               <Button onClick={() => onEdit(design)} className="rounded-full bg-gradient-navy text-cream gap-2"><Edit className="h-4 w-4" />Edit Design</Button>
-              <Button variant="outline" className="rounded-full border-navy/20 text-navy gap-2 hover:bg-secondary"><BarChart3 className="h-4 w-4" />View Analytics</Button>
-              <Button variant="outline" className="rounded-full border-navy/20 text-navy gap-2 hover:bg-secondary"><MessageCircle className="h-4 w-4" />Customer Chat</Button>
+              <Button onClick={onViewAnalytics} variant="outline" className="rounded-full border-navy/20 text-navy gap-2 hover:bg-secondary"><BarChart3 className="h-4 w-4" />View Analytics</Button>
             </div>
           </div>
         </div>

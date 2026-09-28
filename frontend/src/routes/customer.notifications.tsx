@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageShell } from "@/components/TopBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ const items = [
 
 function Notifications() {
   const [dynamicItems, setDynamicItems] = useState<any[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/bookings/customer').then(res => {
@@ -35,9 +36,23 @@ function Notifications() {
             ? `${o.tailor?.user?.name || 'Your tailor'} confirmed receiving your cash payment of ₹${o.amount - (o.baseAmountPaid || 500)}.`
             : `${o.tailor?.user?.name || 'Your tailor'} declined the cash handover request.`,
           time: "Just now",
-          unread: true
+          unread: true,
+          link: `/customer/chat?tailorId=${o.tailor?._id || o.tailor?.id}`
         }));
-      setDynamicItems(updates);
+
+      const acceptedReqs = res.data
+        .filter((o: any) => o.status === 'confirmed' && o.amount === 0)
+        .map((o: any) => ({
+          icon: Sparkles,
+          tint: "bg-gradient-gold text-navy-deep",
+          title: "Design Request Accepted!",
+          body: `${o.tailor?.user?.name || 'A tailor'} accepted your design request. Tap to start chatting!`,
+          time: new Date(o.updatedAt).toLocaleTimeString(),
+          unread: true,
+          link: `/customer/chat?tailorId=${o.tailor?._id || o.tailor?.id}`
+        }));
+
+      setDynamicItems([...updates, ...acceptedReqs]);
     }).catch(console.error);
   }, []);
 
@@ -61,7 +76,7 @@ function Notifications() {
 
       <Card className="border-gold/60 shadow-luxe divide-y divide-border/40">
         {allItems.map((n, i) => (
-          <div key={i} className={`flex items-start gap-4 p-5 ${n.unread ? "bg-champagne/30" : ""}`}>
+          <div key={i} onClick={() => n.link && navigate({ to: n.link as any })} className={`flex items-start gap-4 p-5 ${n.unread ? "bg-champagne/30" : ""} ${n.link ? "cursor-pointer hover:bg-black/5" : ""}`}>
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${n.tint}`}>
               <n.icon className="h-4 w-4" />
             </div>

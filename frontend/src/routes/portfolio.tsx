@@ -25,8 +25,8 @@ function PortfolioPage() {
       try {
         const res = await api.get('/tailors/profile');
         if (res.data) {
-          setServices(res.data.services || []);
-          setDesigns(res.data.designs || []);
+          setServices(res.data.services?.map((s: any) => ({ ...s, id: s._id || s.id })) || []);
+          setDesigns(res.data.designs?.map((d: any) => ({ ...d, id: d._id || d.id })) || []);
         }
       } catch (err) {
         console.error("Failed to fetch profile", err);
@@ -112,7 +112,8 @@ function PortfolioPage() {
                 </button>
               </div>
               {service.image ? (
-                <div className="h-48 w-full bg-cover bg-center" style={{ backgroundImage: `url(${service.image})` }}>
+                <div className="h-48 w-full relative overflow-hidden bg-muted">
+                  {service.image ? <img src={service.image} className="absolute inset-0 w-full h-full object-cover" /> : null}
                   <div className="h-full w-full bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
               ) : (

@@ -181,8 +181,25 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
                 type: "payment_update"
               };
             });
+            
+          const acceptedReqs = res.data
+            .filter((o: any) => o.status === 'confirmed' && o.amount === 0)
+            .map((o: any) => {
+              const updateTime = new Date(o.updatedAt || o.createdAt).getTime();
+              return {
+                id: `${o._id}_req_accepted`,
+                title: "Design Request Accepted",
+                message: `${o.tailor?.user?.name || 'A tailor'} accepted your design request. Tap to start chatting!`,
+                time: formatTime(updateTime),
+                orderId: o._id,
+                type: "alert",
+                link: `/customer/chat?tailorId=${o.tailor?._id || o.tailor?.id}`
+              };
+            });
+            
+          const allUpdates = [...updates, ...acceptedReqs];
           
-          const validUpdates = updates.filter((n: any) => {
+          const validUpdates = allUpdates.filter((n: any) => {
             if (viewed[n.id]) {
               if (Date.now() - viewed[n.id] > TWENTY_FOUR_HOURS) return false;
               n.read = true;
@@ -304,12 +321,14 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
                   notifications.map((n, i) => (
                     <div key={i} onClick={() => { 
                       markAsRead(); 
-                      if (role === "admin") {
+                      if (n.link) {
+                        navigate({ to: n.link as any });
+                      } else if (role === "admin") {
                         navigate({ to: n.type === "verification" ? "/admin/verifications" : "/admin/notifications" });
-                      } else if (n.type === "payment") {
-                        navigate({ to: "/wallet", search: { highlight: n.orderId } });
+                      } else if (n.type === "payment" || n.type === "payment_update") {
+                        navigate({ to: role === "customer" ? "/customer/notifications" : "/wallet", search: { highlight: n.orderId } } as any);
                       } else {
-                        navigate({ to: role === 'customer' ? `/customer/order/${n.orderId}` : `/order/${n.orderId}` }); 
+                        navigate({ to: role === 'customer' ? `/customer/order/${n.orderId}` : `/order/${n.orderId}` } as any); 
                       }
                     }} className={`p-4 border-b border-gold/10 hover:bg-gold/5 transition cursor-pointer ${!n.read ? 'bg-gold/10' : 'bg-white'}`}>
                       <div className="flex justify-between items-start mb-1">

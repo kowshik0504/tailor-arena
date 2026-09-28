@@ -196,21 +196,23 @@ exports.acceptBooking = async (req, res) => {
     booking.status = 'confirmed';
     const updated = await booking.save();
 
-    // Send Acceptance Notification
-    try {
-      await notificationService.notifyBookingAccepted(
-        req.user._id, // tailor's user ID for preference check
-        booking.customer.email,
-        booking.customer.name,
-        booking.customer.phone, // might be undefined, that's fine
-        profile.shopName || req.user.name,
-        booking.date,
-        booking.timeSlot,
-        booking._id
-      );
-    } catch (err) {
-      console.error('Email failed during acceptance:', err.message);
-      // We don't return error here because the booking was already saved as confirmed
+    // Send Acceptance Notification (Only for real bookings with a price)
+    if (booking.amount > 0) {
+      try {
+        await notificationService.notifyBookingAccepted(
+          req.user._id, // tailor's user ID for preference check
+          booking.customer.email,
+          booking.customer.name,
+          booking.customer.phone, // might be undefined, that's fine
+          profile.shopName || req.user.name,
+          booking.date,
+          booking.timeSlot,
+          booking._id
+        );
+      } catch (err) {
+        console.error('Email failed during acceptance:', err.message);
+        // We don't return error here because the booking was already saved as confirmed
+      }
     }
 
     res.json(updated);
