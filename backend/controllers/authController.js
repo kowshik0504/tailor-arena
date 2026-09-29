@@ -638,9 +638,6 @@ exports.login = async (req, res) => {
         // Use NotificationService in future, for now standard email
         await sendOTP(email, otp, user.name);
 
-        // Send WhatsApp OTP directly to the verified test number
-        await sendWhatsAppMessage("919025619766", `Hi ${user.name}, your Tailor Arena 2FA Code is: ${otp}. It expires in 5 minutes.`);
-
         return res.json({ 
           require2FA: true, 
           email: user.email,
