@@ -6,8 +6,6 @@ const otpGenerator = require('otp-generator');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
-const { sendWhatsAppMessage } = require('../utils/whatsapp');
-
 // ================= TOKEN =================
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -744,11 +742,10 @@ exports.updatePreferences = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const { emailNotifications, whatsappUpdates, smsReminders, twoFactorAuth } = req.body;
+    const { emailNotifications, smsReminders, twoFactorAuth } = req.body;
 
     if (!user.preferences) user.preferences = {};
     if (emailNotifications !== undefined) user.preferences.emailNotifications = emailNotifications;
-    if (whatsappUpdates !== undefined) user.preferences.whatsappUpdates = whatsappUpdates;
     if (smsReminders !== undefined) user.preferences.smsReminders = smsReminders;
     if (twoFactorAuth !== undefined) user.preferences.twoFactorAuth = twoFactorAuth;
 

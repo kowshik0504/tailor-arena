@@ -184,7 +184,7 @@ function Login() {
             </div>
             <h3 className="text-lg font-display text-white">Two-Factor Authentication</h3>
             <p className="text-sm text-cream/70">
-              We've sent a 6-digit code to your registered email (or WhatsApp).
+              We've sent a 6-digit code to your registered email .
             </p>
           </div>
 

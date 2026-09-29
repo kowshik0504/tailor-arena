@@ -112,7 +112,7 @@ function SettingsPage() {
                   ["GSTIN", user?.gstin || "Not provided"],
                   ["Established", user?.established || "Not provided"],
                   ["Address", user?.location ? [user.location.street, user.location.area, user.location.city, user.location.pincode].filter(Boolean).join(", ") : "Not provided"],
-                  ["Location Pin", user?.location?.latitude ? `${user.location.latitude}° N, ${user.location.longitude}° E` : "Not provided"],
+                  ["Location Pin", user?.location?.latitude ? `${user.location.latitude}ï¿½ N, ${user.location.longitude}ï¿½ E` : "Not provided"],
                 ].map(([l, v]) => (
                   <div key={l as string}>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">{l}</p>
@@ -168,7 +168,6 @@ function SettingsPage() {
             <div className="mt-5 divide-y divide-border/40">
               {[
                 ["emailNotifications", "Email notifications", "Daily summaries and important alerts."],
-                ["whatsappUpdates", "WhatsApp customer updates", "Auto-send order milestones to customers."],
                 ["smsReminders", "SMS payment reminders", "Send gentle nudges 3 days after due date."],
                 ["twoFactorAuth", "Two-factor authentication", "Protect your atelier with an extra layer."],
               ].map(([key, l, d]) => {

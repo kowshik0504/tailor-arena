@@ -21,7 +21,6 @@ export interface User {
   established?: string;
   preferences?: {
     emailNotifications: boolean;
-    whatsappUpdates: boolean;
     smsReminders: boolean;
     twoFactorAuth: boolean;
   };

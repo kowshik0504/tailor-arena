@@ -48,7 +48,6 @@ isProfileComplete: {
 },
 preferences: {
   emailNotifications: { type: Boolean, default: true },
-  whatsappUpdates: { type: Boolean, default: true },
   smsReminders: { type: Boolean, default: true },
   twoFactorAuth: { type: Boolean, default: true }
 },
