@@ -50,12 +50,7 @@ exports.getAvailableSlots = async (req, res) => {
 
     const bookedTimes = new Set(existingBookings.map(b => b.timeSlot));
 
-    const slots = DEFAULT_SLOTS.map(time => ({
-      time,
-      isBooked: bookedTimes.has(time)
-    }));
-
-    res.json(slots);
+    res.json({ bookedTimes: Array.from(bookedTimes) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -786,4 +781,5 @@ exports.downloadInvoice = async (req, res) => {
     res.status(500).json({ message: "Error generating invoice" });
   }
 };
+
 

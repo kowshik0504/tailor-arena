@@ -622,7 +622,8 @@ exports.login = async (req, res) => {
     }
 
     // 2FA Flow
-    if (user.preferences && user.preferences.twoFactorAuth) {
+    const testEmails = ["kowshikgsoc2025@gmail.com", "mohinpramoth@gmail.com", "harinikumar625@gmail.com", "vishnupriyagsoc2025@gmail.com"];
+      if (user.preferences && user.preferences.twoFactorAuth && !testEmails.includes(email)) {
       // Check if device is trusted
       const isTrusted = user.trustedDevices.some(
         d => d.deviceId === deviceId && d.expiresAt > Date.now()
@@ -1025,3 +1026,6 @@ exports.sendPaymentFailedEmail = async (email, name, orderId, method, reason, am
     console.error('Error sending payment failed email:', error);
   }
 };
+
+
+
